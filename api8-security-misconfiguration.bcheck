@@ -229,7 +229,7 @@ given request then
     # Test 6: Debug Mode Detection
     send request called debug_check:
         method: "GET"
-        replacing path: "{base.request.url}{debug_param}"
+        appending query_string: "debug=true&verbose=1&test=1"
         headers: {base.request.headers}
 
     if {debug_check.response.status_code} is "200" then
