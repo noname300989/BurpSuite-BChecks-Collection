@@ -1,0 +1,35 @@
+metadata:
+    language: v2-beta
+    name: "CSRF - Token Validation Bypass"
+    description: "Tests multiple CSRF token bypass techniques including removal, method override, and token swapping"
+    author: "BCheck Arsenal"
+    tags: "csrf", "token-bypass"
+
+given request then
+    send request called noToken:
+        removing parameter "csrf_token"
+        removing parameter "csrf"
+        removing parameter "_token"
+        removing parameter "authenticity_token"
+        removing parameter "csrfmiddlewaretoken"
+
+    if {noToken.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "CSRF token not validated. The server accepts requests without any CSRF token present."
+            remediation: "Enforce CSRF token validation on all state-changing requests."
+    end if
+
+    send request called methodOverride:
+        method: "GET"
+        removing parameter "csrf_token"
+        removing parameter "_token"
+
+    if {methodOverride.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "CSRF protection bypassed via HTTP method change. GET accepted for state-changing operations."
+            remediation: "Enforce CSRF tokens regardless of HTTP method."
+    end if

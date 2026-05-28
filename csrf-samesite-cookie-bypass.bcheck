@@ -1,0 +1,23 @@
+metadata:
+    language: v2-beta
+    name: "CSRF - SameSite Cookie Bypass Detection"
+    description: "Detects missing or weak SameSite cookie attributes"
+    author: "BCheck Arsenal"
+    tags: "csrf", "samesite", "cookies"
+
+given response then
+    if {latest.response.headers} matches "Set-Cookie:(?!.*SameSite)" then
+        report issue:
+            severity: medium
+            confidence: certain
+            detail: "Session cookie set without SameSite attribute, enabling CSRF attacks."
+            remediation: "Set SameSite=Lax or SameSite=Strict on all session cookies."
+    end if
+
+    if {latest.response.headers} matches "Set-Cookie:.*SameSite=None(?!.*Secure)" then
+        report issue:
+            severity: medium
+            confidence: certain
+            detail: "Cookie uses SameSite=None without Secure flag."
+            remediation: "Always pair SameSite=None with the Secure flag."
+    end if

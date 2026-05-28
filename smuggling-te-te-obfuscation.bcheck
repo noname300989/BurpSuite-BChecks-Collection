@@ -1,0 +1,26 @@
+metadata:
+    language: v2-beta
+    name: "HTTP Request Smuggling - TE.TE Obfuscation"
+    description: "Tests TE.TE smuggling with obfuscated Transfer-Encoding variants"
+    author: "BCheck Arsenal"
+    tags: "smuggling", "te-te", "obfuscation"
+
+given request then
+    send request called tete1:
+        method: "POST"
+        replacing header "Transfer-Encoding" with "chunked"
+        appending header "Transfer-Encoding" with " chunked"
+        body: "0\r\n\r\n"
+
+    send request called tete2:
+        method: "POST"
+        replacing header "Transfer-Encoding" with "xchunked"
+        body: "0\r\n\r\n"
+
+    if {tete1.response.status_code} differs from {tete2.response.status_code} then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "TE.TE smuggling via Transfer-Encoding obfuscation. Different TE formats produce different behavior."
+            remediation: "Normalize Transfer-Encoding parsing. Use HTTP/2 end-to-end."
+    end if

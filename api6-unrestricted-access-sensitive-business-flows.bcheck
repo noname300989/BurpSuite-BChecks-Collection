@@ -1,0 +1,189 @@
+metadata:
+    language: v2-beta
+    name: "API6:2023 - Unrestricted Access to Sensitive Business Flows"
+    description: "Detects missing controls on sensitive business flows like purchases, account creation, and data export with automation detection bypass"
+    author: "OWASP API Security"
+    tags: "owasp-api-top10", "business-flow-abuse", "automation", "api6"
+
+define:
+    # Bot detection bypass headers
+    bot_bypass_ua_1 = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    bot_bypass_ua_2 = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Safari/605.1.15"
+    # Bulk registration payload
+    bulk_register = '{"email":"test_enum_1@example.com","password":"TestP@ss123!","name":"Test User"}'
+    bulk_register_2 = '{"email":"test_enum_2@example.com","password":"TestP@ss123!","name":"Test User 2"}'
+    bulk_register_3 = '{"email":"test_enum_3@example.com","password":"TestP@ss123!","name":"Test User 3"}'
+    # Data export abuse
+    export_all = '{"format":"csv","filter":"*","limit":999999}'
+    # Coupon/referral abuse
+    coupon_payload = '{"coupon":"TEST","referral_code":"REF123"}'
+
+given request then
+    if not({base.request.url} matches "(api|v[0-9]|rest|graphql|service)")  then
+        log(message: "Skipping non-API endpoint")
+    end if
+
+    # Test 1: Mass Registration / Account Creation Abuse
+    if {base.request.url} matches "(register|signup|sign-up|create.account|onboard)" then
+        if {base.request.method} is "POST" then
+            # Send multiple registration requests rapidly
+            send request called reg_check_1:
+                method: "POST"
+                headers: {base.request.headers}
+                body: "{bulk_register}"
+
+            send request called reg_check_2:
+                method: "POST"
+                headers: {base.request.headers}
+                body: "{bulk_register_2}"
+
+            send request called reg_check_3:
+                method: "POST"
+                headers: {base.request.headers}
+                body: "{bulk_register_3}"
+
+            if {reg_check_1.response.status_code} is "200" then
+                if {reg_check_2.response.status_code} is "200" then
+                    if {reg_check_3.response.status_code} is "200" then
+                        report issue:
+                            severity: high
+                            confidence: tentative
+                            detail: "Unrestricted Account Creation: Three rapid account registration requests all succeeded without CAPTCHA, email verification, or rate limiting. This enables mass account creation for spam, credential stuffing, or promotional abuse."
+                            remediation: "Implement CAPTCHA, email verification, phone verification, or device fingerprinting. Rate limit registration by IP and device. Detect and block automated registration patterns."
+                    end if
+                end if
+            end if
+        end if
+    end if
+
+    # Test 2: Automated Purchase/Checkout Flow Abuse
+    if {base.request.url} matches "(checkout|purchase|buy|order|cart|payment|booking|reserve)" then
+        if {base.request.method} is "POST" then
+            # Rapid purchase requests
+            send request called purchase_check_1:
+                method: "POST"
+                headers: {base.request.headers}
+                body: {base.request.body}
+
+            send request called purchase_check_2:
+                method: "POST"
+                headers: {base.request.headers}
+                body: {base.request.body}
+
+            if {purchase_check_1.response.status_code} is "200" then
+                if {purchase_check_2.response.status_code} is "200" then
+                    if not({purchase_check_2.response.headers} matches "(X-RateLimit|Retry-After|captcha|challenge)") then
+                        report issue:
+                            severity: high
+                            confidence: tentative
+                            detail: "Unrestricted Purchase Flow: Multiple rapid purchase requests succeeded without bot detection, CAPTCHA, or rate limiting. Scalpers and bots can automate purchasing to deplete inventory."
+                            remediation: "Implement bot detection (CAPTCHA, device fingerprinting). Rate limit purchase attempts. Add queue-based fair access for high-demand items. Verify human interaction patterns."
+                    end if
+                end if
+            end if
+        end if
+    end if
+
+    # Test 3: Automated Review/Comment Posting
+    if {base.request.url} matches "(review|comment|feedback|rating|testimonial|post)" then
+        if {base.request.method} is "POST" then
+            send request called spam_check_1:
+                method: "POST"
+                headers: {base.request.headers}
+                body: '{"content":"Test review 1","rating":5}'
+
+            send request called spam_check_2:
+                method: "POST"
+                headers: {base.request.headers}
+                body: '{"content":"Test review 2","rating":5}'
+
+            if {spam_check_1.response.status_code} is "200" then
+                if {spam_check_2.response.status_code} is "200" then
+                    report issue:
+                        severity: medium
+                        confidence: tentative
+                        detail: "Unrestricted Content Posting: Multiple rapid review/comment submissions succeeded without anti-spam controls, enabling review bombing, spam campaigns, or reputation manipulation."
+                        remediation: "Implement rate limiting per user/IP. Add CAPTCHA for unauthenticated submissions. Require purchase verification for product reviews. Use content analysis for spam detection."
+                end if
+            end if
+        end if
+    end if
+
+    # Test 4: Data Export/Scraping Abuse
+    if {base.request.url} matches "(export|download|dump|extract|report|csv|pdf|bulk)" then
+        send request called export_check:
+            method: "POST"
+            headers: {base.request.headers}
+            body: "{export_all}"
+
+        if {export_check.response.status_code} is "200" then
+            report issue:
+                severity: high
+                confidence: tentative
+                detail: "Unrestricted Data Export: The API allows exporting all data without limit restrictions, enabling mass data scraping and exfiltration."
+                remediation: "Limit export size. Implement progressive data access. Log and monitor export activities. Require additional authentication for bulk exports."
+        end if
+    end if
+
+    # Test 5: Coupon/Referral Code Abuse
+    if {base.request.url} matches "(coupon|promo|discount|referral|voucher|redeem)" then
+        if {base.request.method} is "POST" then
+            send request called coupon_check_1:
+                method: "POST"
+                headers: {base.request.headers}
+                body: "{coupon_payload}"
+
+            send request called coupon_check_2:
+                method: "POST"
+                headers: {base.request.headers}
+                body: "{coupon_payload}"
+
+            if {coupon_check_1.response.status_code} is "200" then
+                if {coupon_check_2.response.status_code} is "200" then
+                    report issue:
+                        severity: medium
+                        confidence: tentative
+                        detail: "Coupon/Referral Code Reuse: The same coupon or referral code was successfully applied multiple times, indicating missing single-use enforcement."
+                        remediation: "Enforce single-use per user/account for coupons. Track redemptions server-side. Implement velocity checks for referral programs."
+                end if
+            end if
+        end if
+    end if
+
+    # Test 6: Bot Detection Bypass - User-Agent manipulation
+    if {base.request.url} matches "(register|signup|checkout|purchase|review|comment)" then
+        send request called bot_bypass_check:
+            method: {base.request.method}
+            replacing header: "User-Agent" => "{bot_bypass_ua_1}"
+            appending header: "Accept-Language" => "en-US,en;q=0.9"
+            appending header: "Accept-Encoding" => "gzip, deflate, br"
+            appending header: "Sec-Fetch-Site" => "same-origin"
+            appending header: "Sec-Fetch-Mode" => "cors"
+            appending header: "Sec-Fetch-Dest" => "empty"
+            body: {base.request.body}
+
+        if {bot_bypass_check.response.status_code} is "200" then
+            if not({bot_bypass_check.response.body} matches "(captcha|challenge|verify|human|recaptcha|hcaptcha)") then
+                report issue:
+                    severity: medium
+                    confidence: tentative
+                    detail: "No Bot Detection on Sensitive Flow: Sensitive business flow endpoint does not implement bot detection (no CAPTCHA challenge, no device fingerprinting) even with browser-like headers. Automated abuse is possible."
+                    remediation: "Implement multi-layered bot detection: CAPTCHA, device fingerprinting, behavioral analysis, and rate limiting. Don't rely solely on User-Agent checks."
+            end if
+        end if
+    end if
+
+    # Test 7: Missing CSRF/anti-automation tokens
+    if {base.request.method} is "POST" then
+        if {base.request.url} matches "(transfer|payment|withdraw|send|wire|purchase)" then
+            if not({base.request.headers} matches "(X-CSRF|csrf|XSRF|xsrf|X-Request-Token)") then
+                if not({base.request.body} matches "(csrf|_token|authenticity_token|anti_forgery)") then
+                    report issue:
+                        severity: medium
+                        confidence: tentative
+                        detail: "Missing Anti-Automation Token on Financial Flow: Sensitive financial endpoint lacks CSRF tokens or anti-automation tokens, making it susceptible to automated replay attacks."
+                        remediation: "Implement CSRF tokens for state-changing operations. Add unique transaction tokens that expire after single use. Require step-up authentication for high-value transactions."
+                end if
+            end if
+        end if
+    end if

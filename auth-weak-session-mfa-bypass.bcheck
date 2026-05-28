@@ -1,0 +1,23 @@
+metadata:
+    language: v2-beta
+    name: "Auth - Weak Session and MFA Bypass Detection"
+    description: "Tests for weak session management and MFA bypass vectors"
+    author: "BCheck Arsenal"
+    tags: "authentication", "session", "mfa-bypass"
+
+given response then
+    if {latest.response.headers} matches "Set-Cookie:.*(?!HttpOnly)" then
+        report issue:
+            severity: medium
+            confidence: certain
+            detail: "Session cookie missing HttpOnly flag."
+            remediation: "Set HttpOnly on all session cookies."
+    end if
+
+    if {latest.response.headers} matches "Set-Cookie:.*(?!Secure)" then
+        report issue:
+            severity: medium
+            confidence: certain
+            detail: "Session cookie missing Secure flag."
+            remediation: "Set Secure on all session cookies. Enforce HTTPS."
+    end if

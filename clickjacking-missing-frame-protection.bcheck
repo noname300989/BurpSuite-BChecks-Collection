@@ -1,0 +1,17 @@
+metadata:
+    language: v2-beta
+    name: "Clickjacking - Missing Frame Protection"
+    description: "Detects missing X-Frame-Options and CSP frame-ancestors"
+    author: "BCheck Arsenal"
+    tags: "clickjacking", "ui-redress", "headers"
+
+given response then
+    if not({latest.response.headers} matches "X-Frame-Options") then
+        if not({latest.response.headers} matches "frame-ancestors") then
+            report issue:
+                severity: medium
+                confidence: certain
+                detail: "No clickjacking protection. Page can be framed by any origin."
+                remediation: "Set X-Frame-Options: DENY or CSP frame-ancestors 'self'."
+        end if
+    end if

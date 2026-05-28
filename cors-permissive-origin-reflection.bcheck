@@ -1,0 +1,31 @@
+metadata:
+    language: v2-beta
+    name: "CORS - Permissive Origin Reflection"
+    description: "Tests for CORS misconfigurations including reflected origins and null origin"
+    author: "BCheck Arsenal"
+    tags: "cors", "misconfiguration"
+
+given request then
+    send request called reflectedOrigin:
+        replacing header "Origin" with "https://attacker.com"
+
+    if {reflectedOrigin.response.headers} matches "Access-Control-Allow-Origin:\s*https://attacker.com" then
+        if {reflectedOrigin.response.headers} matches "Access-Control-Allow-Credentials:\s*true" then
+            report issue:
+                severity: high
+                confidence: certain
+                detail: "Critical CORS: arbitrary origin reflected with credentials enabled."
+                remediation: "Implement strict origin allowlist. Never reflect arbitrary origins with credentials."
+        end if
+    end if
+
+    send request called nullOrigin:
+        replacing header "Origin" with "null"
+
+    if {nullOrigin.response.headers} matches "Access-Control-Allow-Origin:\s*null" then
+        report issue:
+            severity: high
+            confidence: certain
+            detail: "CORS null origin accepted. Enables attacks from sandboxed iframes."
+            remediation: "Never allowlist null origin."
+    end if

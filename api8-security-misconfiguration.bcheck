@@ -1,0 +1,279 @@
+metadata:
+    language: v2-beta
+    name: "API8:2023 - Security Misconfiguration"
+    description: "Detects security misconfigurations in APIs including CORS, headers, debug modes, verbose errors, and default configurations"
+    author: "OWASP API Security"
+    tags: "owasp-api-top10", "misconfiguration", "cors", "headers", "api8"
+
+define:
+    # CORS test origins
+    cors_evil_origin = "https://evil-attacker.com"
+    cors_null_origin = "null"
+    cors_subdomain_bypass = "https://evil.target.com"
+    cors_scheme_bypass = "http://target.com"
+    # HTTP methods for discovery
+    options_method = "OPTIONS"
+    trace_method = "TRACE"
+    # Debug/Error payloads
+    debug_param = "?debug=true&verbose=1&test=1"
+    error_trigger_json = '{"":"","__proto__":{"isAdmin":true}}'
+    error_trigger_type = '{"id":"not_a_number"}'
+    # Path traversal for config files
+    config_path_1 = "/.env"
+    config_path_2 = "/config.json"
+    config_path_3 = "/web.config"
+    config_path_4 = "/.git/config"
+    config_path_5 = "/swagger.json"
+    config_path_6 = "/openapi.json"
+    config_path_7 = "/api-docs"
+    config_path_8 = "/.well-known/openid-configuration"
+    config_path_9 = "/server-status"
+    config_path_10 = "/actuator"
+    config_path_11 = "/actuator/env"
+    config_path_12 = "/actuator/health"
+    config_path_13 = "/elmah.axd"
+    config_path_14 = "/phpinfo.php"
+    config_path_15 = "/__debug__"
+
+given request then
+    # Test 1: CORS Misconfiguration - Wildcard/Reflected Origin
+    send request called cors_evil:
+        method: {base.request.method}
+        headers: {base.request.headers}
+        appending header: "Origin" => "{cors_evil_origin}"
+
+    if {cors_evil.response.headers} matches "Access-Control-Allow-Origin" then
+        if {cors_evil.response.headers} matches "evil-attacker.com" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "CORS Misconfiguration - Origin Reflection: The API reflects arbitrary Origin headers in Access-Control-Allow-Origin, allowing any website to make cross-origin requests and read responses. This enables data theft via malicious web pages."
+                remediation: "Whitelist specific trusted origins. Never reflect the Origin header directly. Avoid using Access-Control-Allow-Origin: *. Validate origins against a strict allowlist."
+        end if
+        if {cors_evil.response.headers} matches "Access-Control-Allow-Origin: \\*" then
+            if {cors_evil.response.headers} matches "Access-Control-Allow-Credentials: true" then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "CORS Misconfiguration - Wildcard with Credentials: The API sets Access-Control-Allow-Origin: * with Allow-Credentials: true, which is a critical misconfiguration allowing credential-inclusive cross-origin requests from any site."
+                    remediation: "Never combine wildcard origin with Allow-Credentials. Specify exact trusted origins when credentials are needed."
+            end if
+        end if
+    end if
+
+    # CORS null origin bypass
+    send request called cors_null:
+        method: {base.request.method}
+        headers: {base.request.headers}
+        appending header: "Origin" => "{cors_null_origin}"
+
+    if {cors_null.response.headers} matches "Access-Control-Allow-Origin: null" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "CORS Misconfiguration - Null Origin Allowed: The API allows the 'null' origin, which can be triggered from sandboxed iframes, data: URLs, and local files, enabling CORS bypass attacks."
+            remediation: "Never whitelist 'null' as an allowed origin. Reject requests with null origin."
+    end if
+
+    # Test 2: Missing Security Headers
+    if {base.response.status_code} is "200" then
+        if not({base.response.headers} matches "Strict-Transport-Security") then
+            report issue:
+                severity: medium
+                confidence: firm
+                detail: "Missing HSTS Header: The API does not set Strict-Transport-Security, allowing downgrade attacks and SSL stripping."
+                remediation: "Add Strict-Transport-Security: max-age=31536000; includeSubDomains header."
+        end if
+
+        if not({base.response.headers} matches "X-Content-Type-Options") then
+            report issue:
+                severity: low
+                confidence: firm
+                detail: "Missing X-Content-Type-Options Header: The API does not set X-Content-Type-Options: nosniff, allowing MIME-type sniffing attacks."
+                remediation: "Add X-Content-Type-Options: nosniff header."
+        end if
+
+        if not({base.response.headers} matches "Cache-Control") then
+            if {base.response.body} matches "(token|password|ssn|credit|secret|private)" then
+                report issue:
+                    severity: medium
+                    confidence: tentative
+                    detail: "Missing Cache-Control on Sensitive Response: Sensitive API responses do not set Cache-Control headers, allowing proxy and browser caching of sensitive data."
+                    remediation: "Add Cache-Control: no-store, no-cache, must-revalidate for responses containing sensitive data."
+            end if
+        end if
+
+        if {base.response.headers} matches "Server:" then
+            if {base.response.headers} matches "Server: (Apache|nginx|IIS|Express|Kestrel|Tomcat|Jetty|Werkzeug)" then
+                report issue:
+                    severity: low
+                    confidence: firm
+                    detail: "Server Version Disclosure: The Server header reveals the web server software and potentially its version, aiding targeted attacks."
+                    remediation: "Remove or generalize the Server header. Do not disclose software names or versions."
+            end if
+        end if
+
+        if {base.response.headers} matches "X-Powered-By:" then
+            report issue:
+                severity: low
+                confidence: firm
+                detail: "Technology Disclosure via X-Powered-By: The X-Powered-By header reveals the framework/technology stack."
+                remediation: "Remove the X-Powered-By header in production."
+        end if
+    end if
+
+    # Test 3: TRACE Method Enabled (XST)
+    send request called trace_check:
+        method: "TRACE"
+        headers: {base.request.headers}
+
+    if {trace_check.response.status_code} is "200" then
+        if {trace_check.response.body} matches "TRACE" then
+            report issue:
+                severity: medium
+                confidence: firm
+                detail: "TRACE Method Enabled (Cross-Site Tracing): The API responds to TRACE requests, which can be exploited for Cross-Site Tracing (XST) to steal authentication cookies via XSS."
+                remediation: "Disable the TRACE HTTP method on the server."
+        end if
+    end if
+
+    # Test 4: Verbose Error Messages
+    send request called error_check:
+        method: "POST"
+        headers: {base.request.headers}
+        body: "{error_trigger_type}"
+
+    if {error_check.response.body} matches "(stack trace|traceback|exception|at \\w+\\.\\w+\\(|<b>Fatal error</b>|SQL syntax|ORA-[0-9]|Microsoft OLE DB|ODBC Error|pg_query|mysql_fetch|sqlite3\\.)" then
+        report issue:
+            severity: medium
+            confidence: firm
+            detail: "Verbose Error Messages: The API exposes detailed error information including stack traces, SQL errors, or framework internals. This reveals implementation details useful for crafting targeted attacks."
+            remediation: "Return generic error messages in production. Log detailed errors server-side only. Never expose stack traces, SQL errors, or internal paths in API responses."
+    end if
+
+    # Test 5: Sensitive Configuration Files Exposed
+    send request called env_check:
+        method: "GET"
+        replacing path: "{config_path_1}"
+
+    if {env_check.response.status_code} is "200" then
+        if {env_check.response.body} matches "(DB_|DATABASE_|API_KEY|SECRET|PASSWORD|AWS_|REDIS_|MONGO_)" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "Environment File Exposed: /.env file is publicly accessible, exposing database credentials, API keys, and other secrets."
+                remediation: "Block access to .env files at the web server level. Never store .env files in the web root. Use proper secrets management."
+        end if
+    end if
+
+    # Swagger/OpenAPI exposed
+    send request called swagger_check:
+        method: "GET"
+        replacing path: "{config_path_5}"
+
+    if {swagger_check.response.status_code} is "200" then
+        if {swagger_check.response.body} matches "(swagger|openapi|paths|definitions)" then
+            report issue:
+                severity: medium
+                confidence: firm
+                detail: "API Documentation Publicly Exposed: swagger.json/openapi.json is accessible without authentication, revealing all API endpoints, parameters, and data models."
+                remediation: "Restrict API documentation to authenticated users in production. If public docs are needed, ensure they don't expose internal endpoints."
+        end if
+    end if
+
+    # Spring Boot Actuator
+    send request called actuator_check:
+        method: "GET"
+        replacing path: "{config_path_10}"
+
+    if {actuator_check.response.status_code} is "200" then
+        if {actuator_check.response.body} matches "(actuator|_links|health|env|beans|metrics)" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "Spring Boot Actuator Exposed: Management endpoints are publicly accessible, potentially exposing environment variables, heap dumps, and configuration details."
+                remediation: "Restrict Actuator endpoints to internal networks. Require authentication. Disable unnecessary actuator endpoints in production."
+        end if
+    end if
+
+    # Actuator env (secrets exposure)
+    send request called actuator_env_check:
+        method: "GET"
+        replacing path: "{config_path_11}"
+
+    if {actuator_env_check.response.status_code} is "200" then
+        if {actuator_env_check.response.body} matches "(spring|database|password|secret|key)" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "Spring Boot Actuator /env Exposed: Environment variables including database passwords and API keys are publicly readable."
+                remediation: "Disable /actuator/env in production. Implement authentication and authorization for all actuator endpoints."
+        end if
+    end if
+
+    # Git config exposed
+    send request called git_check:
+        method: "GET"
+        replacing path: "{config_path_4}"
+
+    if {git_check.response.status_code} is "200" then
+        if {git_check.response.body} matches "(\\[core\\]|\\[remote|repositoryformatversion)" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "Git Repository Exposed: .git/config is accessible, allowing full source code download via git repository reconstruction."
+                remediation: "Block access to .git directories at the web server level. Ensure .git is not deployed to production."
+        end if
+    end if
+
+    # Test 6: Debug Mode Detection
+    send request called debug_check:
+        method: "GET"
+        replacing path: "{base.request.url}{debug_param}"
+        headers: {base.request.headers}
+
+    if {debug_check.response.status_code} is "200" then
+        if {debug_check.response.body} differs from {base.response.body} then
+            if {debug_check.response.body} matches "(debug|trace|verbose|internal|stack|sql|query)" then
+                report issue:
+                    severity: medium
+                    confidence: tentative
+                    detail: "Debug Mode Enabled via Parameters: Adding debug/verbose query parameters changes the API response, exposing additional internal information."
+                    remediation: "Remove debug parameters from production APIs. Debug functionality should not be toggleable via query parameters."
+            end if
+        end if
+    end if
+
+    # Test 7: Prototype Pollution Check
+    if {base.request.method} matches "(POST|PUT|PATCH)" then
+        send request called proto_check:
+            method: {base.request.method}
+            headers: {base.request.headers}
+            body: "{error_trigger_json}"
+
+        if {proto_check.response.status_code} is "200" then
+            if {proto_check.response.body} matches "(isAdmin|admin.*true)" then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "Prototype Pollution: The API processes __proto__ properties in JSON input, allowing attackers to inject properties into Object prototypes and potentially escalate privileges."
+                    remediation: "Sanitize JSON input to reject __proto__, constructor, and prototype properties. Use Object.create(null) for configuration objects."
+            end if
+        end if
+    end if
+
+    # Test 8: HTTP Request Smuggling Detection
+    send request called smuggling_cl_te:
+        method: "POST"
+        headers: {base.request.headers}
+        appending header: "Transfer-Encoding" => "chunked"
+        appending header: "Content-Length" => "4"
+        body: "0\r\n\r\nG"
+
+    if {smuggling_cl_te.response.status_code} is "200" then
+        report issue:
+            severity: low
+            confidence: tentative
+            detail: "Potential HTTP Request Smuggling: The server processed a request with conflicting Content-Length and Transfer-Encoding headers without rejecting it."
+            remediation: "Configure the server to reject requests with both Content-Length and Transfer-Encoding headers. Use HTTP/2 where possible."
+    end if

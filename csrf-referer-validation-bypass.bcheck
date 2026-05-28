@@ -1,0 +1,29 @@
+metadata:
+    language: v2-beta
+    name: "CSRF - Referer Validation Bypass"
+    description: "Tests for weak Referer-based CSRF defenses"
+    author: "BCheck Arsenal"
+    tags: "csrf", "referer-bypass"
+
+given request then
+    send request called noReferer:
+        removing header "Referer"
+
+    if {noReferer.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "CSRF Referer validation bypassed. Server accepts requests without Referer header."
+            remediation: "Do not rely solely on Referer. Implement token-based CSRF protection."
+    end if
+
+    send request called subdomainBypass:
+        replacing header "Referer" with "https://target.com.attacker.com/page"
+
+    if {subdomainBypass.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: firm
+            detail: "CSRF Referer validation bypassed via subdomain embedding. Uses substring match."
+            remediation: "Use strict origin comparison. Prefer token-based CSRF protection."
+    end if

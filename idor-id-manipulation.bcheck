@@ -1,0 +1,24 @@
+metadata:
+    language: v2-beta
+    name: "IDOR - Insecure Direct Object Reference Detection"
+    description: "Tests for IDOR by manipulating numeric identifiers"
+    author: "BCheck Arsenal"
+    tags: "idor", "access-control"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "1"
+            - "0"
+            - "2"
+            - "99999"
+            - "-1"
+
+    if {check.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Potential IDOR. Manipulated object identifiers returned 200. Verify unauthorized data access manually."
+            remediation: "Implement authorization checks on every object access."
+    end if

@@ -1,0 +1,21 @@
+metadata:
+    language: v2-beta
+    name: "DOM - Clobbering Detection"
+    description: "Detects DOM clobbering where named HTML elements override JS variables"
+    author: "BCheck Arsenal"
+    tags: "dom", "clobbering"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "<form id=x><input name=y value=clobbered>"
+            - "<a id=x href=https://attacker.com>clobber</a>"
+
+    if {check.response} matches "(id=x|name=x)" then
+        report issue:
+            severity: medium
+            confidence: tentative
+            detail: "Potential DOM clobbering. Injected elements with id/name reflected."
+            remediation: "Use Object.freeze on DOM references. Validate element types."
+    end if

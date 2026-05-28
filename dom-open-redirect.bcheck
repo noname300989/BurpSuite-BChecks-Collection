@@ -1,0 +1,27 @@
+metadata:
+    language: v2-beta
+    name: "DOM - Open Redirect Detection"
+    description: "Tests for DOM-based open redirect vulnerabilities"
+    author: "BCheck Arsenal"
+    tags: "dom", "open-redirect"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "https://attacker.com"
+            - "//attacker.com"
+            - "javascript:alert(document.domain)"
+            - "///attacker.com"
+            - "https://attacker.com\@target.com"
+            - "data:text/html,<script>alert(1)</script>"
+
+    if {redirect.response.status_code} is "302" then
+        if {redirect.response.headers} matches "Location:.*attacker\.com" then
+            report issue:
+                severity: medium
+                confidence: certain
+                detail: "Open redirect detected. Application redirects to attacker-controlled URLs."
+                remediation: "Use relative URLs. Implement redirect domain allowlist."
+        end if
+    end if

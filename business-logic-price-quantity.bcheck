@@ -1,0 +1,25 @@
+metadata:
+    language: v2-beta
+    name: "Business Logic - Price and Quantity Manipulation"
+    description: "Tests for business logic flaws: negative prices, zero-cost orders, quantity manipulation"
+    author: "BCheck Arsenal"
+    tags: "business-logic", "price-manipulation"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "-1"
+            - "-100"
+            - "0"
+            - "99999999999"
+            - "0.001"
+            - "1e-10"
+
+    if {check.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Potential business logic flaw. Server accepted manipulated numeric values (negative/zero/overflow)."
+            remediation: "Validate all numeric inputs server-side. Enforce minimum values. Calculate prices server-side."
+    end if

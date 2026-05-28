@@ -1,0 +1,24 @@
+metadata:
+    language: v2-beta
+    name: "Prototype Pollution - Client and Server Side"
+    description: "Tests for prototype pollution via __proto__ and constructor.prototype"
+    author: "BCheck Arsenal"
+    tags: "prototype-pollution", "javascript", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "{\"__proto__\":{\"polluted\":\"true\"}}"
+            - "{\"constructor\":{\"prototype\":{\"polluted\":\"true\"}}}"
+            - "__proto__[polluted]=true"
+            - "constructor[prototype][polluted]=true"
+            - "__proto__.polluted=true"
+
+    if {check.response} matches "(polluted|__proto__|constructor\.prototype)" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Potential prototype pollution. Prototype chain manipulation markers reflected."
+            remediation: "Use Object.create(null). Freeze Object.prototype. Use Map instead of plain objects."
+    end if

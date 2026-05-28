@@ -1,0 +1,15 @@
+metadata:
+    language: v2-beta
+    name: "JWT - Header Injection via kid and jku"
+    description: "Detects JWT header parameter injection vectors"
+    author: "BCheck Arsenal"
+    tags: "jwt", "kid-injection", "jku-injection"
+
+given response then
+    if {latest.response} matches "eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+" then
+        report issue:
+            severity: medium
+            confidence: tentative
+            detail: "JWT detected. Test for: kid SQLi, kid path traversal, jku/x5u URL injection to attacker JWKS."
+            remediation: "Validate kid against allowlist. Restrict jku/x5u to trusted domains."
+    end if

@@ -1,0 +1,23 @@
+metadata:
+    language: v2-beta
+    name: "Race Condition - TOCTOU Detection"
+    description: "Tests for race conditions by sending rapid concurrent requests"
+    author: "BCheck Arsenal"
+    tags: "race-condition", "toctou", "concurrency"
+
+given request then
+    send request called race1:
+    send request called race2:
+    send request called race3:
+
+    if {race1.response.status_code} is "200" then
+        if {race2.response.status_code} is "200" then
+            if {race3.response.status_code} is "200" then
+                report issue:
+                    severity: high
+                    confidence: tentative
+                    detail: "Potential race condition. Multiple concurrent requests all succeeded. Verify with Turbo Intruder for single-packet attacks."
+                    remediation: "Use database-level locking. Implement idempotency keys. Use atomic operations."
+            end if
+        end if
+    end if

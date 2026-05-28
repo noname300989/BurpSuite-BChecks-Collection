@@ -1,0 +1,29 @@
+metadata:
+    language: v2-beta
+    name: "Access Control - Privilege Escalation Checks"
+    description: "Tests for vertical/horizontal privilege escalation via role manipulation and admin path access"
+    author: "BCheck Arsenal"
+    tags: "access-control", "privilege-escalation"
+
+given request then
+    send request called adminPaths:
+        appending to path: "/admin"
+
+    if {adminPaths.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Admin panel accessible at /admin. Verify authentication/authorization enforcement."
+            remediation: "Implement role-based access control for admin endpoints."
+    end if
+
+    send request called roleEscalation:
+        appending to body: "&role=admin&admin=true&isAdmin=1&access_level=9999"
+
+    if {roleEscalation.response.status_code} is "200" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Potential privilege escalation via role parameter injection."
+            remediation: "Never accept role parameters from client-side. Derive auth from server session."
+    end if

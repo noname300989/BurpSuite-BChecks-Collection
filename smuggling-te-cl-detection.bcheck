@@ -1,0 +1,21 @@
+metadata:
+    language: v2-beta
+    name: "HTTP Request Smuggling - TE.CL Detection"
+    description: "Tests for TE.CL smuggling"
+    author: "BCheck Arsenal"
+    tags: "smuggling", "te-cl", "desync"
+
+given request then
+    send request called tecl:
+        method: "POST"
+        replacing header "Content-Length" with "3"
+        replacing header "Transfer-Encoding" with "chunked"
+        body: "8\r\nSMUGGLED\r\n0\r\n\r\n"
+
+    if {tecl.response.status_code} differs from "200" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Potential TE.CL request smuggling."
+            remediation: "Ensure consistent parsing. Reject conflicting CL/TE. Use HTTP/2 end-to-end."
+    end if

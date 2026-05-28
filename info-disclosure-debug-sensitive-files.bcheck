@@ -1,0 +1,37 @@
+metadata:
+    language: v2-beta
+    name: "Information Disclosure - Debug and Sensitive Files"
+    description: "Discovers exposed debug pages, stack traces, and sensitive config files"
+    author: "BCheck Arsenal"
+    tags: "info-disclosure", "debug", "sensitive-files"
+
+given response then
+    if {latest.response} matches "(Traceback \(most recent|Fatal error:|Exception in thread|Stack trace:|NullPointerException|SQLSTATE\[)" then
+        report issue:
+            severity: medium
+            confidence: certain
+            detail: "Verbose error / stack trace exposed. Internal details visible."
+            remediation: "Implement custom error pages. Disable debug mode in production."
+    end if
+
+    if {latest.response.headers} matches "(Server:\s*(Apache|nginx|Microsoft-IIS|Tomcat)[/ ][0-9]|X-Powered-By:\s*(PHP|ASP\.NET|Express|Django))" then
+        report issue:
+            severity: low
+            confidence: certain
+            detail: "Server software and version disclosed in response headers."
+            remediation: "Remove or genericize Server and X-Powered-By headers."
+    end if
+
+given request then
+    send request called sensitiveFiles:
+        appending to path: "/.env"
+
+    if {sensitiveFiles.response.status_code} is "200" then
+        if {sensitiveFiles.response} matches "(DB_PASSWORD|API_KEY|SECRET_KEY|AWS_ACCESS)" then
+            report issue:
+                severity: high
+                confidence: certain
+                detail: "Sensitive .env file exposed with credentials/API keys."
+                remediation: "Block .env file access. Move sensitive files outside web root."
+        end if
+    end if
