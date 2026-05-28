@@ -1,21 +1,22 @@
 metadata:
     language: v2-beta
     name: "HTTP Request Smuggling - TE.CL Detection"
-    description: "Tests for TE.CL smuggling"
+    description: "Tests for TE.CL request smuggling by sending conflicting Transfer-Encoding and Content-Length headers"
     author: "BCheck Arsenal"
     tags: "smuggling", "te-cl", "desync"
 
 given request then
     send request called tecl:
         method: "POST"
-        replacing header "Content-Length" with "3"
-        replacing header "Transfer-Encoding" with "chunked"
+        replacing headers:
+            "Content-Length": "3",
+            "Transfer-Encoding": "chunked"
         body: "8\r\nSMUGGLED\r\n0\r\n\r\n"
 
-    if {tecl.response.status_code} differs from "200" then
+    if not({tecl.response.status_code} matches "200") then
         report issue:
             severity: high
             confidence: tentative
-            detail: "Potential TE.CL request smuggling."
-            remediation: "Ensure consistent parsing. Reject conflicting CL/TE. Use HTTP/2 end-to-end."
+            detail: "Potential TE.CL request smuggling. Conflicting Transfer-Encoding and Content-Length headers caused an unexpected response, suggesting inconsistent parsing between proxy and backend."
+            remediation: "Ensure consistent TE/CL parsing across all layers. Reject ambiguous requests. Use HTTP/2 end-to-end."
     end if

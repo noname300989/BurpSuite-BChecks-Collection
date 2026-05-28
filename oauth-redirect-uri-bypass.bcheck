@@ -1,0 +1,25 @@
+metadata:
+    language: v2-beta
+    name: "OAuth - Redirect URI Bypass"
+    description: "Tests for OAuth redirect_uri manipulation enabling token theft"
+    author: "BCheck Arsenal"
+    tags: "oauth", "redirect", "active"
+
+run for each:
+    payload = "https://attacker.com/callback",
+        "https://evil.target.com/callback",
+        "https://target.com/callback/../../../attacker-page",
+        "https://target.com%40attacker.com/callback",
+        "https://target.com/callback#@attacker.com"
+
+given insertion point then
+    send payload:
+        replacing: {payload}
+
+    if {latest.response.status_code} is "302" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "OAuth redirect_uri manipulation accepted. Server redirected without strict URI validation, potentially enabling authorization code or token theft."
+            remediation: "Implement strict redirect_uri validation using exact string matching against a registered allowlist. Reject any redirect_uri not pre-registered."
+    end if

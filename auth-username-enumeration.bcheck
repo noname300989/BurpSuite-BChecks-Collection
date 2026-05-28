@@ -6,18 +6,27 @@ metadata:
     tags: "authentication", "enumeration"
 
 given insertion point then
-    send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "admin"
-            - "administrator"
+    send payload called validUser1:
+        replacing: "admin"
 
-    send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "xyznonexistent12345"
+    send payload called invalidUser1:
+        replacing: "xyznonexistent12345"
 
-    if {validUser.response.body} differs from {invalidUser.response.body} then
+    if {validUser1.response} differs from {invalidUser1.response} then
+        report issue:
+            severity: medium
+            confidence: tentative
+            detail: "Username enumeration detected. Different responses for valid vs invalid usernames."
+            remediation: "Return identical responses. Use generic error messages."
+    end if
+
+    send payload called validUser2:
+        replacing: "administrator"
+
+    send payload called invalidUser2:
+        replacing: "xyznonexistent12345"
+
+    if {validUser2.response} differs from {invalidUser2.response} then
         report issue:
             severity: medium
             confidence: tentative

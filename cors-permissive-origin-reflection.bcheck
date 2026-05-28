@@ -7,7 +7,8 @@ metadata:
 
 given request then
     send request called reflectedOrigin:
-        replacing header "Origin" with "https://attacker.com"
+        replacing headers:
+            "Origin": "https://attacker.com"
 
     if {reflectedOrigin.response.headers} matches "Access-Control-Allow-Origin:\s*https://attacker.com" then
         if {reflectedOrigin.response.headers} matches "Access-Control-Allow-Credentials:\s*true" then
@@ -20,7 +21,8 @@ given request then
     end if
 
     send request called nullOrigin:
-        replacing header "Origin" with "null"
+        replacing headers:
+            "Origin": "null"
 
     if {nullOrigin.response.headers} matches "Access-Control-Allow-Origin:\s*null" then
         report issue:

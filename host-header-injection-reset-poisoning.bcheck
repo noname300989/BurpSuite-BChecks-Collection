@@ -7,7 +7,8 @@ metadata:
 
 given request then
     send request called hostInject:
-        replacing header "Host" with "attacker.com"
+        replacing headers:
+            "Host": "attacker.com"
 
     if {hostInject.response} matches "attacker\.com" then
         report issue:
@@ -18,7 +19,8 @@ given request then
     end if
 
     send request called xfh:
-        appending header "X-Forwarded-Host" with "attacker.com"
+        appending headers:
+            "X-Forwarded-Host": "attacker.com"
 
     if {xfh.response} matches "attacker\.com" then
         report issue:

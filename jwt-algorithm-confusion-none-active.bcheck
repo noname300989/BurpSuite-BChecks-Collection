@@ -1,0 +1,21 @@
+metadata:
+    language: v2-beta
+    name: "JWT - Algorithm Confusion and None Attack Active Detection"
+    description: "Tests for JWT none algorithm acceptance"
+    author: "BCheck Arsenal"
+    tags: "jwt", "active", "none-attack"
+
+given request then
+    if {latest.request.headers} matches "Authorization:\s*Bearer\s+eyJ" then
+        send request called noneAlg:
+            replacing headers:
+                "Authorization": "Bearer eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6ImFkbWluIiwiaWF0IjoxNTE2MjM5MDIyfQ."
+
+        if {noneAlg.response.status_code} is "200" then
+            report issue:
+                severity: high
+                confidence: certain
+                detail: "JWT none algorithm accepted. Token forgery possible without signing key."
+                remediation: "Explicitly reject 'none' algorithm. Allowlist accepted algorithms."
+        end if
+    end if

@@ -1,21 +1,22 @@
 metadata:
     language: v2-beta
     name: "HTTP Request Smuggling - CL.TE Detection"
-    description: "Tests for CL.TE request smuggling"
+    description: "Tests for CL.TE request smuggling by sending conflicting Content-Length and Transfer-Encoding headers"
     author: "BCheck Arsenal"
     tags: "smuggling", "cl-te", "desync"
 
 given request then
     send request called clte:
         method: "POST"
-        replacing header "Content-Length" with "6"
-        replacing header "Transfer-Encoding" with "chunked"
+        replacing headers:
+            "Content-Length": "6",
+            "Transfer-Encoding": "chunked"
         body: "0\r\n\r\nG"
 
-    if {clte.response.status_code} differs from "200" then
+    if not({clte.response.status_code} matches "200") then
         report issue:
             severity: high
             confidence: tentative
-            detail: "Potential CL.TE request smuggling. Conflicting CL/TE headers cause unexpected behavior."
-            remediation: "Normalize request parsing. Reject ambiguous requests. Use HTTP/2 end-to-end."
+            detail: "Potential CL.TE request smuggling. Conflicting Content-Length and Transfer-Encoding headers caused an unexpected response status, indicating inconsistent parsing between frontend and backend."
+            remediation: "Normalize request parsing across all proxy layers. Reject requests with both CL and TE headers. Use HTTP/2 end-to-end where possible."
     end if

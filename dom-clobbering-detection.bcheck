@@ -5,14 +5,15 @@ metadata:
     author: "BCheck Arsenal"
     tags: "dom", "clobbering"
 
+run for each:
+    payload = "<form id=x><input name=y value=clobbered>",
+        "<a id=x href=https://attacker.com>clobber</a>"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "<form id=x><input name=y value=clobbered>"
-            - "<a id=x href=https://attacker.com>clobber</a>"
+        replacing: {payload}
 
-    if {check.response} matches "(id=x|name=x)" then
+    if {latest.response} matches "(id=x|name=x)" then
         report issue:
             severity: medium
             confidence: tentative

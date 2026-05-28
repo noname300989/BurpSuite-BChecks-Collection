@@ -7,10 +7,14 @@ metadata:
 
 given request then
     send request called xfhCache:
-        appending header "X-Forwarded-Host" with "attacker.com"
-        appending header "X-Forwarded-Scheme" with "nothttps"
-        appending header "X-Original-URL" with "/admin"
-        appending header "X-Rewrite-URL" with "/admin"
+        appending headers:
+            "X-Forwarded-Host": "attacker.com"
+        appending headers:
+            "X-Forwarded-Scheme": "nothttps"
+        appending headers:
+            "X-Original-URL": "/admin"
+        appending headers:
+            "X-Rewrite-URL": "/admin"
 
     if {xfhCache.response} matches "(attacker\.com|/admin)" then
         if {xfhCache.response.headers} matches "(X-Cache|Age|CF-Cache-Status|x-cache)" then

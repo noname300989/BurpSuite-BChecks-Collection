@@ -8,19 +8,22 @@ metadata:
 given request then
     send request called tete1:
         method: "POST"
-        replacing header "Transfer-Encoding" with "chunked"
-        appending header "Transfer-Encoding" with " chunked"
+        replacing headers:
+            "Transfer-Encoding": "chunked"
+        appending headers:
+            "Transfer-Encoding": " chunked"
         body: "0\r\n\r\n"
 
     send request called tete2:
         method: "POST"
-        replacing header "Transfer-Encoding" with "xchunked"
+        replacing headers:
+            "Transfer-Encoding": "xchunked"
         body: "0\r\n\r\n"
 
-    if {tete1.response.status_code} differs from {tete2.response.status_code} then
+    if {tete1.response} differs from {tete2.response} then
         report issue:
             severity: high
             confidence: tentative
-            detail: "TE.TE smuggling via Transfer-Encoding obfuscation. Different TE formats produce different behavior."
-            remediation: "Normalize Transfer-Encoding parsing. Use HTTP/2 end-to-end."
+            detail: "TE.TE smuggling via Transfer-Encoding obfuscation. Different TE header formats produced different response status codes, indicating inconsistent parsing between proxy layers."
+            remediation: "Normalize Transfer-Encoding parsing. Reject requests with multiple or obfuscated TE headers. Use HTTP/2 end-to-end."
     end if

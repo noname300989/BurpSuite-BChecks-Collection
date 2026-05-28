@@ -1,35 +1,33 @@
 metadata:
     language: v2-beta
     name: "CSRF - Token Validation Bypass"
-    description: "Tests multiple CSRF token bypass techniques including removal, method override, and token swapping"
+    description: "Tests multiple CSRF token bypass techniques including token removal and HTTP method override"
     author: "BCheck Arsenal"
     tags: "csrf", "token-bypass"
 
 given request then
+    # Strip common CSRF token parameters from query string and body
     send request called noToken:
-        removing parameter "csrf_token"
-        removing parameter "csrf"
-        removing parameter "_token"
-        removing parameter "authenticity_token"
-        removing parameter "csrfmiddlewaretoken"
+        replacing query_string: {regex_replace({base.request.url.query}, "(^|&)(csrf_token|csrf|_token|authenticity_token|csrfmiddlewaretoken)=[^&]*", "")}
+        replacing body: {regex_replace({base.request.body}, "(^|&)(csrf_token|csrf|_token|authenticity_token|csrfmiddlewaretoken)=[^&]*", "")}
 
     if {noToken.response.status_code} is "200" then
         report issue:
             severity: high
             confidence: firm
-            detail: "CSRF token not validated. The server accepts requests without any CSRF token present."
-            remediation: "Enforce CSRF token validation on all state-changing requests."
+            detail: "CSRF token not validated. The server accepts requests with the CSRF token stripped from query string and body."
+            remediation: "Enforce CSRF token validation on all state-changing requests. Reject requests missing a valid token."
     end if
 
+    # Method override bypass: switch to GET and strip token
     send request called methodOverride:
         method: "GET"
-        removing parameter "csrf_token"
-        removing parameter "_token"
+        replacing query_string: {regex_replace({base.request.url.query}, "(^|&)(csrf_token|csrf|_token|authenticity_token|csrfmiddlewaretoken)=[^&]*", "")}
 
     if {methodOverride.response.status_code} is "200" then
         report issue:
             severity: high
             confidence: tentative
-            detail: "CSRF protection bypassed via HTTP method change. GET accepted for state-changing operations."
-            remediation: "Enforce CSRF tokens regardless of HTTP method."
+            detail: "CSRF protection bypassed via HTTP method change to GET. The server accepts state-changing operations over GET without a CSRF token."
+            remediation: "Enforce CSRF tokens regardless of HTTP method. Reject GET requests for state-changing endpoints."
     end if

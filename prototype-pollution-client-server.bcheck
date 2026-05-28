@@ -5,17 +5,18 @@ metadata:
     author: "BCheck Arsenal"
     tags: "prototype-pollution", "javascript", "waf-bypass"
 
+run for each:
+    payload = "{\"__proto__\":{\"polluted\":\"true\"}}",
+        "{\"constructor\":{\"prototype\":{\"polluted\":\"true\"}}}",
+        "__proto__[polluted]=true",
+        "constructor[prototype][polluted]=true",
+        "__proto__.polluted=true"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "{\"__proto__\":{\"polluted\":\"true\"}}"
-            - "{\"constructor\":{\"prototype\":{\"polluted\":\"true\"}}}"
-            - "__proto__[polluted]=true"
-            - "constructor[prototype][polluted]=true"
-            - "__proto__.polluted=true"
+        replacing: {payload}
 
-    if {check.response} matches "(polluted|__proto__|constructor\.prototype)" then
+    if {latest.response} matches "(polluted|__proto__|constructor\.prototype)" then
         report issue:
             severity: high
             confidence: tentative

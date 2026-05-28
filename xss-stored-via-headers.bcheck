@@ -7,9 +7,12 @@ metadata:
 
 given request then
     send request called check:
-        replacing header "User-Agent" with "<img/src=x onerror=alert(document.cookie)>"
-        replacing header "Referer" with "<svg onload=alert(1)>"
-        replacing header "X-Forwarded-For" with "<script>alert(1)</script>"
+        replacing headers:
+            "User-Agent": "<img/src=x onerror=alert(document.cookie)>"
+        replacing headers:
+            "Referer": "<svg onload=alert(1)>"
+        replacing headers:
+            "X-Forwarded-For": "<script>alert(1)</script>"
 
     if {check.response} matches "(<img/src=x|<svg onload|<script>alert)" then
         report issue:

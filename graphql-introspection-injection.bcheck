@@ -8,7 +8,8 @@ metadata:
 given request then
     send request called introCheck:
         method: "POST"
-        replacing header "Content-Type" with "application/json"
+        replacing headers:
+            "Content-Type": "application/json"
         body: "{\"query\":\"{__schema{types{name,fields{name,type{name}}}}}\"}"
 
     if {introCheck.response} matches "(__schema|__type|queryType|mutationType)" then
@@ -21,7 +22,8 @@ given request then
 
     send request called batchCheck:
         method: "POST"
-        replacing header "Content-Type" with "application/json"
+        replacing headers:
+            "Content-Type": "application/json"
         body: "[{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"},{\"query\":\"{__typename}\"}]"
 
     if {batchCheck.response} matches "\[.*__typename.*__typename" then

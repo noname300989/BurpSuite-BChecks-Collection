@@ -7,9 +7,12 @@ metadata:
 
 given request then
     send request called wsHijack:
-        replacing header "Origin" with "https://attacker.com"
-        replacing header "Upgrade" with "websocket"
-        replacing header "Connection" with "Upgrade"
+        replacing headers:
+            "Origin": "https://attacker.com"
+        replacing headers:
+            "Upgrade": "websocket"
+        replacing headers:
+            "Connection": "Upgrade"
 
     if {wsHijack.response.status_code} is "101" then
         report issue:

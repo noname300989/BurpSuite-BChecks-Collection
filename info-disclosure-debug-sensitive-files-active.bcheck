@@ -1,0 +1,30 @@
+metadata:
+    language: v2-beta
+    name: "Information Disclosure - Sensitive Files (Active)"
+    description: "Probes for exposed .env, config and backup files by appending common sensitive paths"
+    author: "BCheck Arsenal"
+    tags: "info-disclosure", "sensitive-files", "active"
+
+run for each:
+    probe_path = "/.env",
+        "/.env.local",
+        "/config.php",
+        "/web.config",
+        "/.git/config",
+        "/backup.sql",
+        "/phpinfo.php",
+        "/server-status"
+
+given request then
+    send request called sensitiveFile:
+        appending path: {probe_path}
+
+    if {sensitiveFile.response.status_code} is "200" then
+        if {sensitiveFile.response} matches "(DB_PASSWORD|API_KEY|SECRET_KEY|AWS_ACCESS|\[core\]|repositoryformatversion|phpinfo|ServerName)" then
+            report issue:
+                severity: high
+                confidence: certain
+                detail: "Sensitive configuration or backup file exposed at {probe_path}"
+                remediation: "Block access to sensitive files. Move them outside the web root. Use .htaccess or server config to deny access."
+        end if
+    end if

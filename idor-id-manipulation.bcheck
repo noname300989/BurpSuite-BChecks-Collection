@@ -5,17 +5,18 @@ metadata:
     author: "BCheck Arsenal"
     tags: "idor", "access-control"
 
+run for each:
+    payload = "1",
+        "0",
+        "2",
+        "99999",
+        "-1"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "1"
-            - "0"
-            - "2"
-            - "99999"
-            - "-1"
+        replacing: {payload}
 
-    if {check.response.status_code} is "200" then
+    if {latest.response.status_code} is "200" then
         report issue:
             severity: high
             confidence: tentative

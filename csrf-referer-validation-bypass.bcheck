@@ -7,7 +7,8 @@ metadata:
 
 given request then
     send request called noReferer:
-        removing header "Referer"
+        removing headers:
+            "Referer"
 
     if {noReferer.response.status_code} is "200" then
         report issue:
@@ -18,7 +19,8 @@ given request then
     end if
 
     send request called subdomainBypass:
-        replacing header "Referer" with "https://target.com.attacker.com/page"
+        replacing headers:
+            "Referer": "https://target.com.attacker.com/page"
 
     if {subdomainBypass.response.status_code} is "200" then
         report issue:

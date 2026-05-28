@@ -5,18 +5,19 @@ metadata:
     author: "BCheck Arsenal"
     tags: "business-logic", "price-manipulation"
 
+run for each:
+    payload = "-1",
+        "-100",
+        "0",
+        "99999999999",
+        "0.001",
+        "1e-10"
+
 given insertion point then
     send payload:
-        replacing: "{insertion_point}"
-        following replacements:
-            - "-1"
-            - "-100"
-            - "0"
-            - "99999999999"
-            - "0.001"
-            - "1e-10"
+        replacing: {payload}
 
-    if {check.response.status_code} is "200" then
+    if {latest.response.status_code} is "200" then
         report issue:
             severity: high
             confidence: tentative

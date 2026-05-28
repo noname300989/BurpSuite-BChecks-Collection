@@ -1,0 +1,17 @@
+metadata:
+    language: v2-beta
+    name: "OAuth - Missing State Parameter"
+    description: "Detects OAuth responses that return tokens or codes without a state parameter, enabling CSRF attacks"
+    author: "BCheck Arsenal"
+    tags: "oauth", "state-bypass", "passive"
+
+given response then
+    if not({latest.response} matches "state=") then
+        if {latest.response} matches "(code=|access_token=|token=)" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "OAuth state parameter missing from response containing an authorization code or token. This enables CSRF attacks against the OAuth flow, allowing an attacker to bind their authorization code to a victim's session."
+                remediation: "Always generate and validate a unique unpredictable state parameter for each authorization request. Reject callbacks that do not include a matching state value."
+        end if
+    end if
