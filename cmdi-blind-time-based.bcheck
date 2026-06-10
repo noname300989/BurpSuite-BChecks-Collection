@@ -10,7 +10,7 @@ given insertion point then
         replacing: "`nslookup {generate_collaborator_address}`"
 
     if not({oobCheck.response.status_code} is "400") then
-        if {oobCheck.response} matches "collaborator" then
+        if any interactions then
             report issue:
                 severity: high
                 confidence: firm
@@ -21,7 +21,7 @@ given insertion point then
         send payload called oobCheck2:
             replacing: ";curl {generate_collaborator_address}"
 
-        if {oobCheck2.response} matches "collaborator" then
+        if any interactions then
             report issue:
                 severity: high
                 confidence: firm
@@ -32,7 +32,7 @@ given insertion point then
         send payload called oobCheck3:
             replacing: "|ping -c 1 {generate_collaborator_address}"
 
-        if {oobCheck3.response} matches "collaborator" then
+        if any interactions then
             report issue:
                 severity: high
                 confidence: firm

