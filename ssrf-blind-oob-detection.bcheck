@@ -5,21 +5,25 @@ metadata:
     author: "BCheck Arsenal"
     tags: "ssrf", "blind", "oob"
 
+define:
+    collab = {generate_collaborator_address()}
+
 run for each:
-    payload = "http://COLLABORATOR/ssrf-test",
-        "https://COLLABORATOR/ssrf-test",
-        "//COLLABORATOR/ssrf-test",
-        "http://user:pass@COLLABORATOR/ssrf-test",
-        "http://%43%4f%4c%4c%41%42%4f%52%41%54%4f%52/ssrf-test"
+    prefix = "http://",
+        "https://",
+        "//",
+        "http://127.0.0.1@",
+        "http://localhost@",
+        "http://0.0.0.0@"
 
 given insertion point then
     send payload:
-        replacing: {payload}
+        replacing: "{prefix}{collab}/ssrf-test"
 
-    if {latest.response.status_code} is "200" then
+    if any interactions then
         report issue:
-            severity: medium
-            confidence: tentative
-            detail: "Potential blind SSRF. Server accepted external URL. Verify OOB interaction in Collaborator."
+            severity: high
+            confidence: certain
+            detail: "Blind SSRF detected. The application fetched the out-of-band collaborator payload."
             remediation: "Validate and restrict user-supplied URLs. Implement allowlisting."
     end if

@@ -16,10 +16,12 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response.body} matches "(innerHTML|document.write|eval[(]|outerHTML|insertAdjacentHTML)" then
-        report issue:
-            severity: medium
-            confidence: tentative
-            detail: "Potential DOM-based XSS detected. The response contains DOM sink patterns that may process user-controlled input."
-            remediation: "Avoid dangerous DOM sinks. Use textContent instead of innerHTML. Sanitize all client-side input."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response.body} matches "(innerHTML|document.write|eval[(]|outerHTML|insertAdjacentHTML)" then
+            report issue:
+                severity: medium
+                confidence: tentative
+                detail: "Potential DOM-based XSS detected. The response contains DOM sink patterns that may process user-controlled input."
+                remediation: "Avoid dangerous DOM sinks. Use textContent instead of innerHTML. Sanitize all client-side input."
+        end if
     end if

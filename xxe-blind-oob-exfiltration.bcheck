@@ -14,10 +14,12 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response} matches "(ENTITY|DOCTYPE|XInclude|xi:include)" then
-        report issue:
-            severity: high
-            confidence: tentative
-            detail: "Potential blind XXE. Server processes XML with external entity declarations. Verify with Burp Collaborator."
-            remediation: "Disable DTD processing entirely. Reject XML with DOCTYPE declarations."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response} matches "(ENTITY|DOCTYPE|XInclude|xi:include)" then
+            report issue:
+                severity: high
+                confidence: tentative
+                detail: "Potential blind XXE. Server processes XML with external entity declarations. Verify with Burp Collaborator."
+                remediation: "Disable DTD processing entirely. Reject XML with DOCTYPE declarations."
+        end if
     end if

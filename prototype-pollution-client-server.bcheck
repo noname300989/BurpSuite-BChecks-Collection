@@ -16,10 +16,12 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response} matches "(polluted|__proto__|constructor\.prototype)" then
-        report issue:
-            severity: high
-            confidence: tentative
-            detail: "Potential prototype pollution. Prototype chain manipulation markers reflected."
-            remediation: "Use Object.create(null). Freeze Object.prototype. Use Map instead of plain objects."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response} matches "(polluted|__proto__|constructor\.prototype)" then
+            report issue:
+                severity: high
+                confidence: tentative
+                detail: "Potential prototype pollution. Prototype chain manipulation markers reflected."
+                remediation: "Use Object.create(null). Freeze Object.prototype. Use Map instead of plain objects."
+        end if
     end if

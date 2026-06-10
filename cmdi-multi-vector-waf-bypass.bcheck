@@ -6,29 +6,31 @@ metadata:
     tags: "cmdi", "rce", "waf-bypass"
 
 run for each:
-    payload = "|id",
-        ";id",
-        "`id`",
-        "$(id)",
-        "%0aid",
-        ";%09id",
-        ";i${IFS}d",
-        ";{i,d}",
-        ";/???/i?",
-        ";$(printf '\x69\x64')",
-        "|whoami",
-        "&whoami",
-        "||whoami",
-        "&&whoami"
+    payload = "|echo 884729",
+        ";echo 884729",
+        "`echo 884729`",
+        "$(echo 884729)",
+        "%0aecho 884729",
+        ";%09echo 884729",
+        ";e${IFS}cho 884729",
+        ";{echo,884729}",
+        "|expr 444 \* 666",
+        ";expr 444 \* 666",
+        "`expr 444 \* 666`",
+        "$(expr 444 \* 666)",
+        "||echo 884729",
+        "&&echo 884729"
 
 given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response} matches "(uid=|gid=|groups=|root|www-data|AUTHORITY\\SYSTEM)" then
-        report issue:
-            severity: high
-            confidence: certain
-            detail: "OS command injection detected. The application executes user-supplied input as system commands."
-            remediation: "Never pass user input to system commands. Use language-native APIs."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response} matches "(884729|295704)" then
+            report issue:
+                severity: high
+                confidence: certain
+                detail: "OS command injection detected. The application executes user-supplied input as system commands."
+                remediation: "Never pass user input to system commands. Use language-native APIs."
+        end if
     end if

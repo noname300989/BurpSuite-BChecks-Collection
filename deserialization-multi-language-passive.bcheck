@@ -6,10 +6,13 @@ metadata:
     tags: "deserialization", "passive"
 
 given response then
-    if {latest.response} matches "(rO0AB|ACED0005|O:[0-9]+:|a:[0-9]+:\{|\x80\x04\x95|\x04\x08|AAEAAAD)" then
-        report issue:
-            severity: high
-            confidence: tentative
-            detail: "Serialized object detected in response. Test for insecure deserialization."
-            remediation: "Avoid deserializing untrusted data. Use signed serialization with type allowlists."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response} matches "(rO0AB|ACED0005|O:[0-9]+:|a:[0-9]+:\{|\x80\x04\x95|\x04\x08|AAEAAAD)" then
+            report issue:
+                severity: high
+                confidence: tentative
+                detail: "Serialized object detected in response. Test for insecure deserialization."
+                remediation: "Avoid deserializing untrusted data. Use signed serialization with type allowlists."
+        end if
+
     end if

@@ -14,10 +14,12 @@ given request then
         replacing headers:
             "X-Forwarded-For": "<script>alert(1)</script>"
 
-    if {check.response} matches "(<img/src=x|<svg onload|<script>alert)" then
-        report issue:
-            severity: high
-            confidence: firm
-            detail: "Stored XSS via HTTP header injection detected. Headers are reflected without sanitization."
-            remediation: "Sanitize and encode all header values before rendering. Never trust HTTP headers as safe input."
+    if not({check.response.status_code} is "400") then
+        if {check.response} matches "(<img/src=x|<svg onload|<script>alert)" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "Stored XSS via HTTP header injection detected. Headers are reflected without sanitization."
+                remediation: "Sanitize and encode all header values before rendering. Never trust HTTP headers as safe input."
+        end if
     end if

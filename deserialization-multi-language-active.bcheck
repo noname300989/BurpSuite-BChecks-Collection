@@ -14,10 +14,13 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response} matches "(ClassNotFoundException|unserialize\(\)|pickle\.loads|Marshal\.load|BinaryFormatter)" then
-        report issue:
-            severity: high
-            confidence: firm
-            detail: "Insecure deserialization error detected."
-            remediation: "Never deserialize untrusted input. Use JSON or safe formats."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response} matches "(ClassNotFoundException|unserialize\(\)|pickle\.loads|Marshal\.load|BinaryFormatter)" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "Insecure deserialization error detected."
+                remediation: "Never deserialize untrusted input. Use JSON or safe formats."
+        end if
+
     end if

@@ -9,32 +9,34 @@ given insertion point then
     send payload called oobCheck:
         replacing: "`nslookup {generate_collaborator_address}`"
 
-    if {oobCheck.response} matches "collaborator" then
-        report issue:
-            severity: high
-            confidence: firm
-            detail: "Blind OS command injection detected via nslookup DNS callback to Burp Collaborator."
-            remediation: "Never execute user input as system commands. Use language-native APIs instead of shell commands."
-    end if
+    if not({oobCheck.response.status_code} is "400") then
+        if {oobCheck.response} matches "collaborator" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "Blind OS command injection detected via nslookup DNS callback to Burp Collaborator."
+                remediation: "Never execute user input as system commands. Use language-native APIs instead of shell commands."
+        end if
 
-    send payload called oobCheck2:
-        replacing: ";curl {generate_collaborator_address}"
+        send payload called oobCheck2:
+            replacing: ";curl {generate_collaborator_address}"
 
-    if {oobCheck2.response} matches "collaborator" then
-        report issue:
-            severity: high
-            confidence: firm
-            detail: "Blind OS command injection detected via curl HTTP callback to Burp Collaborator."
-            remediation: "Never execute user input as system commands. Use language-native APIs instead of shell commands."
-    end if
+        if {oobCheck2.response} matches "collaborator" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "Blind OS command injection detected via curl HTTP callback to Burp Collaborator."
+                remediation: "Never execute user input as system commands. Use language-native APIs instead of shell commands."
+        end if
 
-    send payload called oobCheck3:
-        replacing: "|ping -c 1 {generate_collaborator_address}"
+        send payload called oobCheck3:
+            replacing: "|ping -c 1 {generate_collaborator_address}"
 
-    if {oobCheck3.response} matches "collaborator" then
-        report issue:
-            severity: high
-            confidence: firm
-            detail: "Blind OS command injection detected via ping callback to Burp Collaborator."
-            remediation: "Never execute user input as system commands. Use language-native APIs instead of shell commands."
+        if {oobCheck3.response} matches "collaborator" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "Blind OS command injection detected via ping callback to Burp Collaborator."
+                remediation: "Never execute user input as system commands. Use language-native APIs instead of shell commands."
+        end if
     end if

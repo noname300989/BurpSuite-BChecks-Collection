@@ -16,10 +16,12 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response} matches "(<base href|<meta http-equiv|<object data|<link rel)" then
-        report issue:
-            severity: high
-            confidence: tentative
-            detail: "Potential CSP bypass vector detected. Injected tags that can circumvent Content-Security-Policy are reflected."
-            remediation: "Implement strict CSP with nonces or hashes. Avoid unsafe-inline and wildcards."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response} matches "(<base href|<meta http-equiv|<object data|<link rel)" then
+            report issue:
+                severity: high
+                confidence: tentative
+                detail: "Potential CSP bypass vector detected. Injected tags that can circumvent Content-Security-Policy are reflected."
+                remediation: "Implement strict CSP with nonces or hashes. Avoid unsafe-inline and wildcards."
+        end if
     end if

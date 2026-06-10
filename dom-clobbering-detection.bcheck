@@ -13,10 +13,12 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response} matches "(id=x|name=x)" then
-        report issue:
-            severity: medium
-            confidence: tentative
-            detail: "Potential DOM clobbering. Injected elements with id/name reflected."
-            remediation: "Use Object.freeze on DOM references. Validate element types."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response} matches "(id=x|name=x)" then
+            report issue:
+                severity: medium
+                confidence: tentative
+                detail: "Potential DOM clobbering. Injected elements with id/name reflected."
+                remediation: "Use Object.freeze on DOM references. Validate element types."
+        end if
     end if

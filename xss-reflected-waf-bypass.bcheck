@@ -19,10 +19,14 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response} matches "(alert\(|alert`|onerror|onload|ontoggle|onbegin|javascript:)" then
-        report issue:
-            severity: high
-            confidence: firm
-            detail: "Reflected XSS detected. The application reflects user input without proper encoding, allowing script execution."
-            remediation: "Encode all output. Implement Content-Security-Policy headers. Use framework auto-escaping."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response.headers} matches "(?i)Content-Type:\\s*text/html" then
+            if {latest.response.body} matches "(?i)(<sVg/oNlOaD=alert\(document\.domain\)>|<dEtAiLs/oPeN/oNtOgGlE=alert\(1\)>|<img src=x onerror=alert`1`>)" then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "Reflected XSS detected. The application reflects user input completely unescaped, and Content-Type is text/html."
+                    remediation: "Encode all output. Implement Content-Security-Policy headers. Use framework auto-escaping."
+            end if
+        end if
     end if

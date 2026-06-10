@@ -19,10 +19,12 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response} matches "(ami-id|instance-id|iam/|computeMetadata|azEnvironment|local-ipv4|security-credentials)" then
-        report issue:
-            severity: high
-            confidence: certain
-            detail: "SSRF to cloud metadata endpoint detected. Application can access instance metadata and IAM credentials."
-            remediation: "Implement allowlist-based URL validation. Use IMDSv2 on AWS. Block link-local addresses."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response} matches "(ami-id|instance-id|iam/|computeMetadata|azEnvironment|local-ipv4|security-credentials)" then
+            report issue:
+                severity: high
+                confidence: certain
+                detail: "SSRF to cloud metadata endpoint detected. Application can access instance metadata and IAM credentials."
+                remediation: "Implement allowlist-based URL validation. Use IMDSv2 on AWS. Block link-local addresses."
+        end if
     end if

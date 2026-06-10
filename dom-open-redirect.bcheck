@@ -17,12 +17,14 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response.status_code} is "302" then
-        if {latest.response.headers} matches "Location:.*attacker\.com" then
-            report issue:
-                severity: medium
-                confidence: certain
-                detail: "Open redirect detected. Application redirects to attacker-controlled URLs."
-                remediation: "Use relative URLs. Implement redirect domain allowlist."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response.status_code} is "302" then
+            if {latest.response.headers} matches "Location:.*attacker\.com" then
+                report issue:
+                    severity: medium
+                    confidence: certain
+                    detail: "Open redirect detected. Application redirects to attacker-controlled URLs."
+                    remediation: "Use relative URLs. Implement redirect domain allowlist."
+            end if
         end if
     end if
