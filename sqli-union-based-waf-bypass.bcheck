@@ -17,10 +17,12 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response.body} matches "(NULL|root@|information_schema|mysql.user|pg_catalog)" then
-        report issue:
-            severity: high
-            confidence: firm
-            detail: "UNION-based SQL injection detected. The application returns data from injected UNION SELECT queries."
-            remediation: "Use parameterized queries. Implement least-privilege database access."
+    if not({latest.response.status_code} is "400") then
+        if {latest.response.body} matches "(NULL|root@|information_schema|mysql.user|pg_catalog)" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "UNION-based SQL injection detected. The application returns data from injected UNION SELECT queries."
+                remediation: "Use parameterized queries. Implement least-privilege database access."
+        end if
     end if

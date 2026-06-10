@@ -12,12 +12,16 @@ given insertion point then
     send payload called falseCheck1:
         replacing: "1' AND '1'='2"
 
-    if {trueCheck1.response} differs from {falseCheck1.response} then
-        report issue:
-            severity: high
-            confidence: tentative
-            detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
-            remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
+    if not({trueCheck1.response.status_code} is "400") then
+        if not({falseCheck1.response.status_code} is "400") then
+            if {trueCheck1.response} differs from {falseCheck1.response} then
+                report issue:
+                    severity: high
+                    confidence: tentative
+                    detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
+                    remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
+            end if
+        end if
     end if
 
     # Pair 2: URL-encoded whitespace WAF bypass
@@ -26,12 +30,16 @@ given insertion point then
     send payload called falseCheck2:
         replacing: "1'%09aNd%091%09=%092%09--"
 
-    if {trueCheck2.response} differs from {falseCheck2.response} then
-        report issue:
-            severity: high
-            confidence: tentative
-            detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
-            remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
+    if not({trueCheck2.response.status_code} is "400") then
+        if not({falseCheck2.response.status_code} is "400") then
+            if {trueCheck2.response} differs from {falseCheck2.response} then
+                report issue:
+                    severity: high
+                    confidence: tentative
+                    detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
+                    remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
+            end if
+        end if
     end if
 
     # Pair 3: Mixed-case keyword bypass
@@ -40,12 +48,16 @@ given insertion point then
     send payload called falseCheck3:
         replacing: "1' AnD 1=2 AnD '1"
 
-    if {trueCheck3.response} differs from {falseCheck3.response} then
-        report issue:
-            severity: high
-            confidence: tentative
-            detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
-            remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
+    if not({trueCheck3.response.status_code} is "400") then
+        if not({falseCheck3.response.status_code} is "400") then
+            if {trueCheck3.response} differs from {falseCheck3.response} then
+                report issue:
+                    severity: high
+                    confidence: tentative
+                    detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
+                    remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
+            end if
+        end if
     end if
 
     # Pair 4: Standard boolean test
@@ -54,10 +66,14 @@ given insertion point then
     send payload called falseCheck4:
         replacing: "1' AND 1=2--"
 
-    if {trueCheck4.response} differs from {falseCheck4.response} then
-        report issue:
-            severity: high
-            confidence: tentative
-            detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
-            remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
+    if not({trueCheck4.response.status_code} is "400") then
+        if not({falseCheck4.response.status_code} is "400") then
+            if {trueCheck4.response} differs from {falseCheck4.response} then
+                report issue:
+                    severity: high
+                    confidence: tentative
+                    detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
+                    remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
+            end if
+        end if
     end if

@@ -16,26 +16,28 @@ given insertion point then
     send payload called truePayload:
         replacing: {payload}
 
-    if {truePayload.response.status_code} is "500" then
-        report issue:
-            severity: high
-            confidence: tentative
-            detail: "Possible SQL injection: WAF-bypass boolean payload triggered a 500 error, indicating the payload reached the SQL layer."
-            remediation: "Use parameterized queries or prepared statements. Implement query execution timeouts."
-    end if
+    if not({truePayload.response.status_code} is "400") then
+        if {truePayload.response.status_code} is "500" then
+            report issue:
+                severity: high
+                confidence: tentative
+                detail: "Possible SQL injection: WAF-bypass boolean payload triggered a 500 error, indicating the payload reached the SQL layer."
+                remediation: "Use parameterized queries or prepared statements. Implement query execution timeouts."
+        end if
 
-    if {truePayload.response.body} matches "(SQL syntax|mysql_fetch|ORA-[0-9]|Microsoft OLE DB|ODBC SQL Server|SQLite3|pg_query|syntax error)" then
-        report issue:
-            severity: high
-            confidence: firm
-            detail: "SQL injection detected via error message. WAF-bypass payload triggered a database error in the response."
-            remediation: "Use parameterized queries or prepared statements. Never concatenate user input into SQL strings."
-    end if
+        if {truePayload.response.body} matches "(SQL syntax|mysql_fetch|ORA-[0-9]|Microsoft OLE DB|ODBC SQL Server|SQLite3|pg_query|syntax error)" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "SQL injection detected via error message. WAF-bypass payload triggered a database error in the response."
+                remediation: "Use parameterized queries or prepared statements. Never concatenate user input into SQL strings."
+        end if
 
-    if {truePayload.response} differs from {base.response} then
-        report issue:
-            severity: medium
-            confidence: tentative
-            detail: "Possible blind SQL injection: WAF-bypass boolean payload produced a different response body compared to the baseline, suggesting conditional SQL behaviour."
-            remediation: "Use parameterized queries or prepared statements."
+        if {truePayload.response} differs from {base.response} then
+            report issue:
+                severity: medium
+                confidence: tentative
+                detail: "Possible blind SQL injection: WAF-bypass boolean payload produced a different response body compared to the baseline, suggesting conditional SQL behaviour."
+                remediation: "Use parameterized queries or prepared statements."
+        end if
     end if

@@ -20,10 +20,12 @@ given insertion point then
     send payload:
         replacing: {payload}
 
-    if {latest.response.body} matches "(SQL syntax|mysql_fetch|ORA-[0-9]|ODBC SQL|PostgreSQL|Unclosed quotation|syntax error at|pg_query|sqlite3|OperationalError|near .syntax.)" then
-        report issue:
-            severity: high
-            confidence: firm
-            detail: "{issueDetail}"
-            remediation: "{issueRemediation}"
+    if not({latest.response.status_code} is "400") then
+        if {latest.response.body} matches "(SQL syntax|mysql_fetch|ORA-[0-9]|ODBC SQL|PostgreSQL|Unclosed quotation|syntax error at|pg_query|sqlite3|OperationalError|near .syntax.)" then
+            report issue:
+                severity: high
+                confidence: firm
+                detail: "{issueDetail}"
+                remediation: "{issueRemediation}"
+        end if
     end if
