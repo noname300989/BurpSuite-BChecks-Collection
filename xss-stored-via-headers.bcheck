@@ -8,18 +8,20 @@ metadata:
 given request then
     send request called check:
         replacing headers:
-            "User-Agent": "<img/src=x onerror=alert(document.cookie)>"
+            "User-Agent": "<img/src=x onerror=alert('xssbcheck123')>"
         replacing headers:
-            "Referer": "<svg onload=alert(1)>"
+            "Referer": "<svg onload=alert('xssbcheck123')>"
         replacing headers:
-            "X-Forwarded-For": "<script>alert(1)</script>"
+            "X-Forwarded-For": "<script>alert('xssbcheck123')</script>"
 
     if not({check.response.status_code} is "400") then
-        if {check.response} matches "(<img/src=x|<svg onload|<script>alert)" then
-            report issue:
-                severity: high
-                confidence: firm
-                detail: "Stored XSS via HTTP header injection detected. Headers are reflected without sanitization."
-                remediation: "Sanitize and encode all header values before rendering. Never trust HTTP headers as safe input."
+        if {check.response.headers} matches "(?i)Content-Type:\\s*text/html" then
+            if {check.response.body} matches "(?i)(<img/src=x onerror=alert\('xssbcheck123'\)>|<svg onload=alert\('xssbcheck123'\)>|<script>alert\('xssbcheck123'\)</script>)" then
+                report issue:
+                    severity: high
+                    confidence: firm
+                    detail: "Stored XSS via HTTP header injection detected. Headers are reflected completely unescaped in an HTML response."
+                    remediation: "Sanitize and encode all header values before rendering. Never trust HTTP headers as safe input."
+            end if
         end if
     end if

