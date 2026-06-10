@@ -20,7 +20,7 @@ given insertion point then
         replacing: {payload}
 
     if not({latest.response.status_code} is "400") then
-        if {latest.response} matches "(root:x:|\[fonts\]|\[extensions\]|boot\.ini)" then
+        if {latest.response.body} matches "(root:x:0:0:root:|daemon:x:1:1:|; for 16-bit app support|\[boot loader\])" then
             report issue:
                 severity: high
                 confidence: certain

